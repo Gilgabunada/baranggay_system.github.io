@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Barangay Information Management System</title>
 <!-- Firebase Realtime Database (NOT Firestore) -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2230;--border:#2a3444;--accent:#2ea87e;--accent2:#1a7a5a;--accent-glow:rgba(46,168,126,0.15);--red:#e05c5c;--yellow:#d4a84b;--blue:#4a9eff;--purple:#8b68db;--text:#e6edf3;--text2:#8b949e;--text3:#58687a;--radius:12px;--shadow:0 4px 24px rgba(0,0,0,0.4);}
@@ -98,13 +98,22 @@
   .alert-info{background:rgba(74,158,255,.1);border:1px solid rgba(74,158,255,.3);color:var(--blue);}
   .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
   .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;}
-  #public-page{display:none;min-height:100vh;background:var(--bg);}
-  .public-header{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 26px;display:flex;justify-content:space-between;align-items:center;}
-  .public-hero{padding:48px 26px;text-align:center;}
-  .public-hero h1{font-family:'DM Serif Display',serif;font-size:2.2rem;margin-bottom:9px;}
-  .public-hero p{color:var(--text2);max-width:460px;margin:0 auto 26px;}
-  .public-form-wrap{max-width:540px;margin:0 auto;}
+  #public-page{display:block;min-height:100vh;background:var(--bg);}
+  .public-header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 40px;display:flex;justify-content:space-between;align-items:center;}
+  .public-hero{padding:36px 40px 60px;max-width:1100px;margin:0 auto;}
+  .public-top{text-align:center;margin-bottom:30px;}
+  .public-top h1{font-family:'DM Serif Display',serif;font-size:2.6rem;margin-bottom:10px;}
+  .public-top p{color:var(--text2);max-width:560px;margin:0 auto;}
+  .public-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:30px;}
+  .pub-info-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;text-align:center;}
+  .pub-info-card .pic{font-size:2rem;margin-bottom:8px;}
+  .pub-info-card .ttl{font-weight:600;font-size:.9rem;margin-bottom:4px;}
+  .pub-info-card .dsc{font-size:.77rem;color:var(--text2);line-height:1.5;}
+  .public-form-wrap{max-width:820px;margin:0 auto;}
   .section-divider{height:1px;background:var(--border);margin:18px 0;}
+  .extra-fields{display:none;}
+  @media(max-width:860px){.public-cards{grid-template-columns:1fr 1fr;}.public-hero{padding:24px 18px 40px;}}
+  @media(max-width:560px){.public-cards{grid-template-columns:1fr;}}
   .spinner{display:inline-block;width:17px;height:17px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .empty-state{text-align:center;padding:38px;color:var(--text3);}
@@ -132,24 +141,75 @@
 <!-- PUBLIC PORTAL -->
 <div id="public-page">
   <div class="public-header">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div class="logo-icon">🏛️</div>
+    <div style="display:flex;align-items:center;gap:11px">
+      <div class="logo-icon" style="width:42px;height:42px;font-size:20px">🏛️</div>
       <div>
-        <div style="font-family:'DM Serif Display',serif;font-size:1rem">Barangay Portal</div>
-        <div style="font-size:.66rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Citizen Request System</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:1.1rem">Barangay Portal</div>
+        <div style="font-size:.67rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Citizen Request System</div>
       </div>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="showSplash()">🔐 Official Login</button>
+    <button class="btn btn-primary btn-sm" onclick="showSplash()" style="gap:7px;padding:9px 18px;font-size:.85rem">🔐 Official Login</button>
   </div>
   <div class="public-hero">
-    <div style="font-size:2.7rem;margin-bottom:13px">🏘️</div>
-    <h1>Welcome, Residents!</h1>
-    <p>Request barangay documents and submit suggestions online. Our Barangay Assistant will process your request promptly.</p>
+    <div class="public-top">
+      <div style="font-size:3.2rem;margin-bottom:14px">🏘️</div>
+      <h1>Welcome, Residents!</h1>
+      <p>Submit requests for barangay documents, register as a resident, or request removal of your records — all online.</p>
+    </div>
+
+    <!-- Info cards -->
+    <div class="public-cards">
+      <div class="pub-info-card">
+        <div class="pic">📋</div>
+        <div class="ttl">Document Requests</div>
+        <div class="dsc">Request certificates, clearances, and other official barangay documents.</div>
+      </div>
+      <div class="pub-info-card">
+        <div class="pic">🏠</div>
+        <div class="ttl">Register as Resident</div>
+        <div class="dsc">Fill up your complete profile to be officially registered in the barangay records.</div>
+      </div>
+      <div class="pub-info-card">
+        <div class="pic">🚪</div>
+        <div class="ttl">Leave / Remove Records</div>
+        <div class="dsc">Officially notify the barangay that you are leaving or request removal of your data.</div>
+      </div>
+    </div>
+
     <div class="public-form-wrap">
       <div class="card">
-        <div id="pub-success" class="alert alert-success" style="display:none">✅ Request submitted! The Barangay Assistant will process it soon.</div>
+        <div id="pub-success" class="alert alert-success" style="display:none">✅ Request submitted! The Barangay Assistant will review and process it soon.</div>
         <div id="pub-error" class="alert alert-error" style="display:none"></div>
-        <div style="font-weight:600;margin-bottom:13px">📋 Submit a Request</div>
+
+        <div style="font-weight:700;font-size:1.05rem;margin-bottom:16px">📋 Submit a Request</div>
+
+        <!-- Request Type first so extra fields can show/hide -->
+        <div class="form-group">
+          <label>Request Type *</label>
+          <select id="pub-reqtype" onchange="handleReqTypeChange()">
+            <option value="">— Select what you need —</option>
+            <optgroup label="📄 Document Requests">
+              <option value="Barangay Certificate">Barangay Certificate</option>
+              <option value="Barangay Clearance">Barangay Clearance</option>
+              <option value="Indigency Certificate">Indigency Certificate</option>
+              <option value="Business Clearance">Business Clearance</option>
+            </optgroup>
+            <optgroup label="🏠 Residency">
+              <option value="Register as Resident">Register as Resident</option>
+              <option value="Request to Leave Barangay">Request to Leave Barangay</option>
+              <option value="Request Data Removal">Request Data Removal</option>
+            </optgroup>
+            <optgroup label="💬 Others">
+              <option value="Suggestion/Complaint">Suggestion / Complaint</option>
+              <option value="Other">Other</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <!-- Basic info (always visible) -->
+        <div style="font-weight:600;font-size:.88rem;color:var(--text2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">Your Information</div>
         <div class="grid-2">
           <div class="form-group"><label>First Name *</label><input type="text" id="pub-fname" placeholder="Juan"></div>
           <div class="form-group"><label>Last Name *</label><input type="text" id="pub-lname" placeholder="dela Cruz"></div>
@@ -162,43 +222,89 @@
         </div>
         <div class="form-group"><label>Complete Address *</label><input type="text" id="pub-address" placeholder="House No., Street, Barangay"></div>
         <div class="form-group"><label>Contact Number</label><input type="text" id="pub-contact" placeholder="09XX-XXX-XXXX"></div>
-        <div class="section-divider"></div>
-        <div class="form-group"><label>Request Type *</label>
-          <select id="pub-reqtype">
-            <option value="">Select request…</option>
-            <option>Barangay Certificate</option><option>Barangay Clearance</option>
-            <option>Indigency Certificate</option><option>Business Clearance</option>
-            <option>Suggestion/Complaint</option><option>Other</option>
-          </select>
+
+        <!-- EXTRA: Register as Resident -->
+        <div id="extra-register" class="extra-fields">
+          <div class="section-divider"></div>
+          <div style="font-weight:600;font-size:.88rem;color:var(--accent);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">🏠 Registration Details</div>
+          <div class="grid-2">
+            <div class="form-group"><label>Middle Name</label><input type="text" id="pub-mname" placeholder="Optional"></div>
+            <div class="form-group"><label>Civil Status</label>
+              <select id="pub-civil"><option value="">Select…</option><option>Single</option><option>Married</option><option>Widowed</option><option>Separated</option><option>Annulled</option></select>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label>Religion</label><input type="text" id="pub-religion" placeholder="e.g. Catholic"></div>
+            <div class="form-group"><label>Household ID <span style="color:var(--text3);font-weight:400">(if known)</span></label><input type="text" id="pub-household" placeholder="e.g. HH001"></div>
+          </div>
+          <div class="alert alert-info" style="margin-top:4px;margin-bottom:0">ℹ️ The Barangay Assistant will review your registration and add you to the official registry upon approval.</div>
         </div>
-        <div class="form-group"><label>Purpose / Details *</label>
-          <textarea id="pub-purpose" placeholder="State your purpose or describe your request…"></textarea>
+
+        <!-- EXTRA: Leave / Remove -->
+        <div id="extra-leave" class="extra-fields">
+          <div class="section-divider"></div>
+          <div style="font-weight:600;font-size:.88rem;color:var(--red);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px">🚪 Departure / Removal Details</div>
+          <div class="form-group"><label>Reason for Leaving / Removal *</label>
+            <select id="pub-leave-reason">
+              <option value="">Select reason…</option>
+              <option>Moved to another Barangay</option>
+              <option>Moved to another City/Municipality</option>
+              <option>Moved Abroad</option>
+              <option>Deceased (Filed by Family)</option>
+              <option>Data Privacy Request</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="form-group"><label>New Address <span style="color:var(--text3);font-weight:400">(if moving)</span></label>
+            <input type="text" id="pub-new-address" placeholder="Where are you moving to?">
+          </div>
+          <div class="alert alert-error" style="margin-top:4px;margin-bottom:0;background:rgba(224,92,92,.06)">⚠️ This request will be reviewed by the Barangay Assistant. Your records will only be removed after official approval.</div>
         </div>
-        <button class="btn btn-primary btn-block" id="pub-btn" onclick="submitPublicRequest()">📤 Submit Request</button>
+
+        <!-- Purpose field (for non-registration types) -->
+        <div id="purpose-wrap">
+          <div class="section-divider"></div>
+          <div class="form-group"><label id="purpose-label">Purpose / Details *</label>
+            <textarea id="pub-purpose" placeholder="State your purpose or describe your request…"></textarea>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" id="pub-btn" onclick="submitPublicRequest()" style="margin-top:4px;padding:13px;">📤 Submit Request</button>
       </div>
-      <div style="margin-top:12px;text-align:center;color:var(--text3);font-size:.78rem">Processing takes 1–3 business days. Visit the barangay hall to claim documents.</div>
+      <div style="margin-top:14px;text-align:center;color:var(--text3);font-size:.78rem">Processing takes 1–3 business days. You may be contacted for follow-up. Visit the barangay hall to claim documents.</div>
     </div>
   </div>
 </div>
 
-<!-- LOGIN -->
-<div id="splash">
-  <div class="splash-inner">
-    <div class="brgy-seal">🏛️</div>
-    <div class="splash-title">Barangay Information<br>Management System</div>
-    <div class="splash-subtitle">Official Portal</div>
-    <div id="login-error" class="alert alert-error" style="display:none"></div>
-    <div class="form-group">
-      <label>Email Address</label>
-      <input type="email" id="login-email" placeholder="official@brgy.gov.ph" onkeypress="if(event.key==='Enter')doLogin()">
+<!-- LOGIN MODAL OVERLAY -->
+<div id="login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;backdrop-filter:blur(5px)" onclick="if(event.target===this)hideLogin()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:420px;margin:20px;box-shadow:var(--shadow);overflow:hidden">
+    <!-- Modal header -->
+    <div style="padding:20px 24px 0;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div style="display:flex;align-items:center;gap:11px;margin-bottom:4px">
+          <div class="logo-icon" style="width:38px;height:38px;font-size:17px">🏛️</div>
+          <div>
+            <div style="font-family:'DM Serif Display',serif;font-size:1.15rem;line-height:1.2">Official Login</div>
+            <div style="font-size:.68rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px">Barangay Officials Only</div>
+          </div>
+        </div>
+      </div>
+      <button onclick="hideLogin()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.3rem;padding:0;line-height:1;margin-top:2px">✕</button>
     </div>
-    <div class="form-group">
-      <label>Password</label>
-      <input type="password" id="login-pass" placeholder="••••••••" onkeypress="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="btn btn-primary btn-block" onclick="doLogin()" id="login-btn">🔐 Sign In</button>
-    <div style="margin-top:13px">
-      <button class="btn btn-ghost btn-sm" onclick="showPublic()">🏘️ Resident Portal (No Login)</button>
+    <!-- Modal body -->
+    <div style="padding:20px 24px 24px">
+      <div id="login-error" class="alert alert-error" style="display:none"></div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="login-email" placeholder="official@brgy.gov.ph" onkeypress="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label>Password</label>
+        <input type="password" id="login-pass" placeholder="••••••••" onkeypress="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="doLogin()" id="login-btn" style="padding:12px">🔐 Sign In</button>
+      <div style="margin-top:14px;text-align:center;font-size:.78rem;color:var(--text3)">This portal is for authorized Barangay Officials only.</div>
     </div>
   </div>
 </div>
@@ -286,8 +392,8 @@ const dbList   = async path => {
 let currentUser = null;
 let _cache = {};
 
-const $    = id => document.getElementById(id);
-const v    = id => { const el=$(id); return el ? el.value.trim() : ''; };
+function eid(id){ return document.getElementById(id); }
+function v(id){ var el=eid(id); return el ? el.value.trim() : ''; }
 
 function calcAge(bd) {
   if (!bd) return '—';
@@ -301,28 +407,29 @@ function fmtDate(ts) {
   return new Date(ts).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' });
 }
 function setErr(id, msg) {
-  const el=$(id);
+  const el=eid(id);
   if (el) { el.textContent = msg||''; el.style.display = msg ? 'flex' : 'none'; }
 }
-function loading() { $('main-content').innerHTML='<div class="empty-state"><span class="spinner"></span></div>'; }
+function loading() { eid('main-content').innerHTML='<div class="empty-state"><span class="spinner"></span></div>'; }
 
 // ════════════════════════════════════════════════
 // PAGE VISIBILITY
 // ════════════════════════════════════════════════
-function showSplash() { $('public-page').style.display='none'; $('splash').style.display='flex'; $('app').style.display='none'; }
-function showPublic() { $('public-page').style.display='block'; $('splash').style.display='none'; $('app').style.display='none'; }
-function showApp()    { $('public-page').style.display='none'; $('splash').style.display='none'; $('app').style.display='block'; }
+function showSplash() { eid('login-modal').style.display='flex'; }
+function hideLogin()  { eid('login-modal').style.display='none'; }
+function showPublic() { eid('public-page').style.display='block'; eid('login-modal').style.display='none'; eid('app').style.display='none'; }
+function showApp()    { eid('public-page').style.display='none'; eid('login-modal').style.display='none'; eid('app').style.display='block'; }
 
 // ════════════════════════════════════════════════
 // AUTH
 // ════════════════════════════════════════════════
 async function doLogin() {
-  const email = $('login-email').value.trim();
-  const pass  = $('login-pass').value;
+  const email = eid('login-email').value.trim();
+  const pass  = eid('login-pass').value;
   setErr('login-error','');
   if (!email||!pass) { setErr('login-error','Enter email and password.'); return; }
 
-  const btn = $('login-btn');
+  const btn = eid('login-btn');
   btn.innerHTML = '<span class="spinner"></span> Signing in…'; btn.disabled = true;
 
   try {
@@ -344,7 +451,8 @@ async function doLogin() {
 function doLogout() {
   currentUser = null; _cache = {};
   auth.signOut();
-  showSplash();
+  eid('app').style.display = 'none';
+  eid('public-page').style.display = 'block';
 }
 
 // Keep session alive on page reload
@@ -355,9 +463,22 @@ auth.onAuthStateChanged(async user => {
       if (profile) {
         currentUser = { uid: user.uid, email: user.email, ...profile };
         initApp();
-      } else { auth.signOut(); showSplash(); }
-    } catch(e) { showSplash(); }
-  } else if (!user) { showSplash(); }
+      } else {
+        auth.signOut();
+        // No profile found — just stay on public portal, don't pop login modal
+        eid('public-page').style.display = 'block';
+        eid('app').style.display = 'none';
+      }
+    } catch(e) {
+      // Error — stay on public portal
+      eid('public-page').style.display = 'block';
+      eid('app').style.display = 'none';
+    }
+  } else if (!user) {
+    // Not logged in — show public portal, NOT the login modal
+    eid('public-page').style.display = 'block';
+    eid('app').style.display = 'none';
+  }
 });
 
 // ════════════════════════════════════════════════
@@ -365,9 +486,9 @@ auth.onAuthStateChanged(async user => {
 // ════════════════════════════════════════════════
 function initApp() {
   showApp();
-  $('user-avatar').textContent = (currentUser.name||'?')[0].toUpperCase();
-  $('user-name-display').textContent = currentUser.name || currentUser.email;
-  $('user-role-display').textContent = { captain:'Barangay Captain', assistant:'Barangay Assistant', health:'Healthcare Dept.' }[currentUser.role] || currentUser.role;
+  eid('user-avatar').textContent = (currentUser.name||'?')[0].toUpperCase();
+  eid('user-name-display').textContent = currentUser.name || currentUser.email;
+  eid('user-role-display').textContent = { captain:'Barangay Captain', assistant:'Barangay Assistant', health:'Healthcare Dept.' }[currentUser.role] || currentUser.role;
   buildNav();
   navigateTo('dashboard');
 }
@@ -404,7 +525,7 @@ const NAV = {
 
 function buildNav() {
   const items = NAV[currentUser.role] || NAV.assistant;
-  $('main-nav').innerHTML = items.map(i => {
+  eid('main-nav').innerHTML = items.map(i => {
     if (i.section) return `<div class="nav-section-label">${i.section}</div>`;
     const b = i.badge ? `<span class="notif-dot" id="badge-${i.id}" style="display:none"></span>` : '';
     return `<div class="nav-item" id="nav-${i.id}" onclick="navigateTo('${i.id}')"><span class="nav-icon">${i.icon}</span>${i.label}${b}</div>`;
@@ -420,10 +541,10 @@ const PAGES = {
 
 function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  const n = $(`nav-${page}`); if (n) n.classList.add('active');
+  const n = eid(`nav-${page}`); if (n) n.classList.add('active');
   loading();
   if (PAGES[page]) PAGES[page]();
-  else $('main-content').innerHTML = '<div class="empty-state"><div class="emoji">🚧</div>Coming soon</div>';
+  else eid('main-content').innerHTML = '<div class="empty-state"><div class="emoji">🚧</div>Coming soon</div>';
 }
 
 // ════════════════════════════════════════════════
@@ -445,10 +566,10 @@ async function dashboard() {
   const recentDocs = [...ct.map(d=>({...d,_t:'Certificate'})),...cl.map(d=>({...d,_t:'Clearance'}))]
                       .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,6);
 
-  const badge = $('badge-requests');
+  const badge = eid('badge-requests');
   if (badge) badge.style.display = pending > 0 ? 'inline-block' : 'none';
 
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div style="margin-bottom:22px">
       <div class="page-title">📊 Dashboard</div>
       <div class="page-sub">${new Date().toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
@@ -494,7 +615,7 @@ async function residents() {
   const search = (_cache._resSearch||'').toLowerCase();
   const filtered = search ? list.filter(r => `${r.firstName} ${r.lastName} ${r.address}`.toLowerCase().includes(search)) : list;
 
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">👥 Residents Registry</div><div class="page-sub">${filtered.length} resident(s)</div></div>
       <button class="btn btn-primary" onclick="openAddResident()">➕ Add Resident</button>
@@ -535,7 +656,7 @@ function residentForm(d={}) {
       <div class="form-group"><label>Middle Name</label><input type="text" id="r-mname" value="${d.middleName||''}"></div>
       <div class="form-group">
         <label>Birthdate * <span id="age-pill" class="age-pill" ${d.birthdate?'':'style="display:none"'}>${d.birthdate?'Age: '+calcAge(d.birthdate):''}</span></label>
-        <input type="date" id="r-bday" value="${d.birthdate||''}" oninput="const p=$('age-pill');p.textContent='Age: '+calcAge(this.value);p.style.display='inline';">
+        <input type="date" id="r-bday" value="${d.birthdate||''}" oninput="const p=eid('age-pill');p.textContent='Age: '+calcAge(this.value);p.style.display='inline';">
       </div>
     </div>
     <div class="grid-2">
@@ -610,7 +731,7 @@ async function households() {
   const list = await dbList('residents');
   const map = {};
   list.forEach(r => { const hid = r.householdId||'UNASSIGNED'; if(!map[hid])map[hid]=[]; map[hid].push(r); });
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div style="margin-bottom:20px"><div class="page-title">🏠 Household Groups</div><div class="page-sub">${Object.keys(map).length} household(s)</div></div>
     ${!Object.keys(map).length ? '<div class="empty-state"><div class="emoji">🏠</div>No residents yet.</div>' :
     `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:13px">
@@ -641,7 +762,7 @@ async function clearances()   { await docPage('clearances','✅','Clearance'); }
 
 async function docPage(node, icon, label) {
   const items = (await dbList(node)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">${icon} Barangay ${label}s</div><div class="page-sub">${items.length} record(s)</div></div>
       <button class="btn btn-primary" onclick="openIssueDoc('${node}','${label}')">➕ Issue ${label}</button>
@@ -729,7 +850,7 @@ async function printDoc(node, id) {
 // ════════════════════════════════════════════════
 async function blotters() {
   const items = (await dbList('blotters')).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">📋 Blotter Records</div><div class="page-sub">${items.length} case(s)</div></div>
       <button class="btn btn-primary" onclick="openAddBlotter()">➕ Record Blotter</button>
@@ -819,7 +940,7 @@ async function deleteBlotter(id) {
 // ════════════════════════════════════════════════
 async function summons() {
   const items = (await dbList('summons')).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">📨 Summons</div><div class="page-sub">${items.length} issued</div></div>
       <button class="btn btn-primary" onclick="openAddSummons()">➕ Issue Summons</button>
@@ -879,10 +1000,10 @@ async function deleteSummon(id) {
 async function requests() {
   const items = (await dbList('requests')).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   const pending = items.filter(r=>r.status==='Pending').length;
-  const badge = $('badge-requests');
+  const badge = eid('badge-requests');
   if (badge) badge.style.display = pending > 0 ? 'inline-block' : 'none';
 
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div style="margin-bottom:${pending?'0':'20px'}">
       <div class="page-title">📥 Resident Requests</div>
       <div class="page-sub">${pending} pending • ${items.length} total</div>
@@ -891,37 +1012,130 @@ async function requests() {
     <div class="card" style="padding:0"><div class="table-wrap"><table>
       <thead><tr><th>Name</th><th>Request Type</th><th>Address</th><th>Contact</th><th>Submitted</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>
-        ${items.length ? items.map(r=>`<tr>
-          <td><strong>${r.name||'—'}</strong></td>
-          <td>${r.reqType||'—'}</td>
-          <td style="max-width:115px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.address||'—'}</td>
-          <td>${r.contact||'—'}</td>
-          <td>${fmtDate(r.createdAt)}</td>
-          <td><span class="badge ${r.status==='Pending'?'badge-yellow':r.status==='Done'?'badge-green':r.status==='Rejected'?'badge-red':'badge-blue'}">${r.status||'—'}</span></td>
-          <td style="white-space:nowrap">
-            <button class="btn btn-ghost btn-sm" onclick="viewRequest('${r.id}')">👁️</button>
-            <button class="btn btn-primary btn-sm" onclick="processRequest('${r.id}','${r.status||'Pending'}')">⚙️</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteRequest('${r.id}')">🗑️</button>
-          </td>
-        </tr>`).join('') : `<tr><td colspan="7"><div class="empty-state"><div class="emoji">📥</div>No requests yet.</div></td></tr>`}
+        ${items.length ? items.map(r=>{
+          const isReg = r.subType==='registration';
+          const isDep = r.subType==='departure'||r.subType==='removal';
+          const typeBadge = isReg ? 'badge-green' : isDep ? 'badge-red' : 'badge-blue';
+          const typeIcon  = isReg ? '🏠' : isDep ? '🚪' : '📄';
+          const statusBadge = r.status==='Pending'?'badge-yellow':r.status==='Done'?'badge-green':r.status==='Rejected'?'badge-red':'badge-blue';
+          return `<tr>
+            <td><strong>${r.name||'—'}</strong></td>
+            <td><span class="badge ${typeBadge}">${typeIcon} ${r.reqType||'—'}</span></td>
+            <td style="max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.address||'—'}</td>
+            <td>${r.contact||'—'}</td>
+            <td>${fmtDate(r.createdAt)}</td>
+            <td><span class="badge ${statusBadge}">${r.status||'—'}</span></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-ghost btn-sm" onclick="viewRequest('${r.id}')">👁️</button>
+              ${isReg&&r.status==='Pending' ? `<button class="btn btn-primary btn-sm" onclick="acceptRegistration('${r.id}')">✅ Register</button>` :
+                isDep&&r.status==='Pending' ? `<button class="btn btn-danger btn-sm" onclick="acceptDeparture('${r.id}')">✅ Remove</button>` :
+                r.status==='Pending' ? `<button class="btn btn-primary btn-sm" onclick="processRequest('${r.id}','${r.status||'Pending'}')">⚙️</button>` : ''}
+              <button class="btn btn-danger btn-sm" onclick="deleteRequest('${r.id}')">🗑️</button>
+            </td>
+          </tr>`;
+        }).join('') : `<tr><td colspan="7"><div class="empty-state"><div class="emoji">📥</div>No requests yet.</div></td></tr>`}
       </tbody>
     </table></div></div>`;
 }
 
 async function viewRequest(id) {
   const r = await dbGet(`requests/${id}`);
+  const isReg     = r.subType === 'registration';
+  const isDep     = r.subType === 'departure' || r.subType === 'removal';
+  const statusBadge = r.status==='Pending'?'badge-yellow':r.status==='Done'?'badge-green':r.status==='Rejected'?'badge-red':'badge-blue';
+
+  let extraHtml = '';
+  if (isReg) {
+    extraHtml = `
+      <div style="margin-top:13px;padding:12px;background:var(--accent-glow);border:1px solid rgba(46,168,126,.25);border-radius:8px">
+        <div style="font-size:.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🏠 Registration Details</div>
+        <div class="info-row"><span class="info-label">Middle Name</span><span class="info-value">${r.middleName||'—'}</span></div>
+        <div class="info-row"><span class="info-label">Civil Status</span><span class="info-value">${r.civilStatus||'—'}</span></div>
+        <div class="info-row"><span class="info-label">Religion</span><span class="info-value">${r.religion||'—'}</span></div>
+        <div class="info-row"><span class="info-label">Household ID</span><span class="info-value">${r.householdId||'—'}</span></div>
+      </div>`;
+  } else if (isDep) {
+    extraHtml = `
+      <div style="margin-top:13px;padding:12px;background:rgba(224,92,92,.07);border:1px solid rgba(224,92,92,.2);border-radius:8px">
+        <div style="font-size:.78rem;color:var(--red);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">🚪 Departure / Removal Details</div>
+        <div class="info-row"><span class="info-label">Reason</span><span class="info-value">${r.leaveReason||'—'}</span></div>
+        <div class="info-row"><span class="info-label">New Address</span><span class="info-value">${r.newAddress||'—'}</span></div>
+      </div>`;
+  }
+
+  const acceptBtn = isReg
+    ? `{ label:'✅ Accept & Register', cls:'btn-primary', action:\`acceptRegistration('\${id}')\` }`
+    : isDep
+    ? `{ label:'✅ Accept & Remove', cls:'btn-danger', action:\`acceptDeparture('\${id}')\` }`
+    : `{ label:'⚙️ Process', cls:'btn-primary', action:\`closeModal();processRequest('\${id}','\${r.status}')\` }`;
+
   openModal('📋 Request Details', `
-    <div class="info-row"><span class="info-label">Name</span><span class="info-value">${r.name}</span></div>
+    <div class="info-row"><span class="info-label">Name</span><span class="info-value"><strong>${r.name}</strong></span></div>
     <div class="info-row"><span class="info-label">Birthday</span><span class="info-value">${r.birthday||'—'} ${r.birthday?'(Age '+calcAge(r.birthday)+')':''}</span></div>
     <div class="info-row"><span class="info-label">Gender</span><span class="info-value">${r.gender||'—'}</span></div>
     <div class="info-row"><span class="info-label">Address</span><span class="info-value">${r.address||'—'}</span></div>
     <div class="info-row"><span class="info-label">Contact</span><span class="info-value">${r.contact||'—'}</span></div>
     <div class="info-row"><span class="info-label">Request Type</span><span class="info-value"><strong>${r.reqType}</strong></span></div>
-    <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="badge badge-yellow">${r.status}</span></span></div>
+    <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="badge ${statusBadge}">${r.status}</span></span></div>
     ${r.remarks?`<div class="info-row"><span class="info-label">Remarks</span><span class="info-value">${r.remarks}</span></div>`:''}
-    <div style="margin-top:11px"><div style="font-size:.75rem;color:var(--text2);margin-bottom:5px;text-transform:uppercase">Purpose:</div>
-    <div style="background:var(--surface2);padding:10px;border-radius:7px;font-size:.83rem">${r.purpose}</div></div>`,
-  [{ label:'Close',cls:'btn-ghost',action:'closeModal()' },{ label:'⚙️ Process',cls:'btn-primary',action:`closeModal();processRequest('${id}','${r.status}')` }]);
+    ${r.purpose&&!isReg?`<div style="margin-top:11px"><div style="font-size:.75rem;color:var(--text2);margin-bottom:5px;text-transform:uppercase">Purpose:</div>
+    <div style="background:var(--surface2);padding:10px;border-radius:7px;font-size:.83rem">${r.purpose}</div></div>`:''}
+    ${extraHtml}`,
+  [{ label:'Close', cls:'btn-ghost', action:'closeModal()' }, eval('('+acceptBtn+')')]);
+}
+
+// One-click: Accept registration → add to residents
+async function acceptRegistration(id) {
+  const r = await dbGet(`requests/${id}`);
+  if (!r) return;
+  if (!confirm(`Add ${r.name} to the Residents Registry?`)) return;
+  try {
+    await dbPush('residents', {
+      firstName: r.firstName||r.name.split(' ')[0],
+      lastName:  r.lastName||r.name.split(' ').slice(1).join(' '),
+      middleName: r.middleName||'',
+      birthdate:  r.birthday||'',
+      gender:     r.gender||'',
+      civilStatus:r.civilStatus||'',
+      religion:   r.religion||'',
+      householdId:r.householdId||'',
+      address:    r.address||'',
+      contact:    r.contact||''
+    });
+    await dbUpdate(`requests/${id}`, { status:'Done', remarks:'Accepted — added to residents registry.', processedBy:currentUser.name, processedAt:Date.now() });
+    closeModal();
+    alert(`✅ ${r.name} has been added to the Residents Registry!`);
+    requests();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+// One-click: Accept departure → remove from residents (find by name + birthdate)
+async function acceptDeparture(id) {
+  const r = await dbGet(`requests/${id}`);
+  if (!r) return;
+  const label = r.subType==='removal' ? 'remove the data of' : 'mark as departed and remove';
+  if (!confirm(`Are you sure you want to ${label} ${r.name}? This will delete their resident record.`)) return;
+  try {
+    // Find matching resident by name and birthdate
+    const allRes = await dbList('residents');
+    const match  = allRes.find(x =>
+      x.birthdate === r.birthday &&
+      (`${x.firstName} ${x.lastName}`.toLowerCase() === r.name.toLowerCase() ||
+       (x.firstName.toLowerCase() === (r.firstName||'').toLowerCase() && x.lastName.toLowerCase() === (r.lastName||'').toLowerCase()))
+    );
+    if (match) {
+      await dbRemove(`residents/${match.id}`);
+      await dbUpdate(`requests/${id}`, { status:'Done', remarks:`Accepted — resident record removed. Reason: ${r.leaveReason||'—'}`, processedBy:currentUser.name, processedAt:Date.now() });
+      closeModal();
+      alert(`✅ ${r.name}'s resident record has been removed.`);
+    } else {
+      // No exact match — mark done but warn
+      await dbUpdate(`requests/${id}`, { status:'Done', remarks:`Accepted — no exact resident record found to delete. Manual check may be needed.`, processedBy:currentUser.name, processedAt:Date.now() });
+      closeModal();
+      alert(`⚠️ Request accepted, but no exact resident record was found for ${r.name}. Please check the registry manually.`);
+    }
+    requests();
+  } catch(e) { alert('Error: '+e.message); }
 }
 
 function processRequest(id, cur) {
@@ -953,7 +1167,7 @@ async function healthRecords() {
   resList.sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
   _cache._resOpts = resList.map(r=>`<option value="${r.id}">${r.lastName}, ${r.firstName}</option>`).join('');
 
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">🏥 Health Records</div><div class="page-sub">${items.length} record(s)</div></div>
       <button class="btn btn-primary" onclick="openAddHealthRecord()">➕ Add Record</button>
@@ -1015,7 +1229,7 @@ async function vaccines() {
   resList.sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
   _cache._resOpts = resList.map(r=>`<option value="${r.id}">${r.lastName}, ${r.firstName}</option>`).join('');
 
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">💉 Vaccination Records</div><div class="page-sub">${items.length} record(s)</div></div>
       <button class="btn btn-primary" onclick="openAddVaccine()">➕ Add Vaccine</button>
@@ -1077,7 +1291,7 @@ async function maternal() {
   const females = resList.filter(r=>r.gender==='Female').sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
   _cache._femOpts = females.map(r=>`<option value="${r.id}">${r.lastName}, ${r.firstName} (${calcAge(r.birthdate)} yrs)</option>`).join('');
 
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div><div class="page-title">🤱 Maternal & Child Health</div><div class="page-sub">${items.length} record(s)</div></div>
       <button class="btn btn-primary" onclick="openAddMaternal()">➕ Add Record</button>
@@ -1140,7 +1354,7 @@ async function deleteMaternal(id) {
 // HEALTH EDUCATION
 // ════════════════════════════════════════════════
 function healthEdu() {
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div style="margin-bottom:20px"><div class="page-title">📚 Basic Health Education</div><div class="page-sub">Health awareness programs and community seminars</div></div>
     <div class="grid-2" style="gap:13px">
       ${[['🫀','Cardiovascular Health','Blood pressure monitoring, heart disease prevention, and healthy lifestyle counseling.'],
@@ -1172,7 +1386,7 @@ async function primaryCare() {
     ['18–59 yrs (Adults)',         r=>{const a=calcAge(r.birthdate);return a>=18&&a<=59;}],
     ['60+ yrs (Senior Citizens)',  r=>calcAge(r.birthdate)>=60]
   ];
-  $('main-content').innerHTML = `
+  eid('main-content').innerHTML = `
     <div style="margin-bottom:20px"><div class="page-title">🩺 Primary Healthcare</div><div class="page-sub">Community-based primary healthcare overview</div></div>
     <div class="stats-grid">
       <div class="stat-card green"><div class="stat-icon">🏥</div><div class="stat-value">${hrList.length}</div><div class="stat-label">Consultations</div></div>
@@ -1208,20 +1422,94 @@ async function primaryCare() {
 }
 
 // ════════════════════════════════════════════════
+// PUBLIC PORTAL — DYNAMIC FIELDS
+// ════════════════════════════════════════════════
+function handleReqTypeChange() {
+  const rt = v('pub-reqtype');
+  const extraReg   = eid('extra-register');
+  const extraLeave = eid('extra-leave');
+  const purposeWrap = eid('purpose-wrap');
+  const purposeLabel = eid('purpose-label');
+
+  // Hide all extras first
+  extraReg.style.display   = 'none';
+  extraLeave.style.display = 'none';
+  purposeWrap.style.display = 'block';
+
+  if (rt === 'Register as Resident') {
+    extraReg.style.display = 'block';
+    purposeWrap.style.display = 'none'; // not needed for registration
+  } else if (rt === 'Request to Leave Barangay' || rt === 'Request Data Removal') {
+    extraLeave.style.display = 'block';
+    purposeLabel.textContent = 'Additional Notes';
+  } else if (rt === 'Suggestion/Complaint') {
+    purposeLabel.textContent = 'Your Suggestion / Complaint *';
+  } else {
+    purposeLabel.textContent = 'Purpose / Details *';
+  }
+}
+
+// ════════════════════════════════════════════════
 // PUBLIC REQUEST SUBMIT
 // ════════════════════════════════════════════════
 async function submitPublicRequest() {
-  const fn=v('pub-fname'),ln=v('pub-lname'),bday=v('pub-bday'),gender=v('pub-gender'),addr=v('pub-address'),reqtype=v('pub-reqtype'),purpose=v('pub-purpose');
-  const errEl=$('pub-error'); errEl.style.display='none';
-  if (!fn||!ln||!bday||!gender||!addr||!reqtype||!purpose) { errEl.textContent='Please fill all required fields.'; errEl.style.display='flex'; return; }
+  const fn=v('pub-fname'), ln=v('pub-lname'), bday=v('pub-bday'),
+        gender=v('pub-gender'), addr=v('pub-address'), reqtype=v('pub-reqtype');
+  const errEl=eid('pub-error'); errEl.style.display='none';
 
-  const btn=$('pub-btn');
+  if (!fn||!ln||!bday||!gender||!addr||!reqtype) {
+    errEl.textContent='Please fill all required fields.'; errEl.style.display='flex'; return;
+  }
+
+  // Extra validation for registration
+  if (reqtype === 'Register as Resident') {
+    // no purpose needed, just submit
+  } else if (reqtype === 'Request to Leave Barangay' || reqtype === 'Request Data Removal') {
+    if (!v('pub-leave-reason')) { errEl.textContent='Please select a reason.'; errEl.style.display='flex'; return; }
+  } else {
+    if (!v('pub-purpose')) { errEl.textContent='Please fill in the purpose/details.'; errEl.style.display='flex'; return; }
+  }
+
+  const btn=eid('pub-btn');
   btn.innerHTML='<span class="spinner"></span> Submitting…'; btn.disabled=true;
+
   try {
-    await dbPush('requests', { name:`${fn} ${ln}`, birthday:bday, gender, address:addr, contact:v('pub-contact'), reqType:reqtype, purpose, status:'Pending' });
-    ['pub-fname','pub-lname','pub-bday','pub-gender','pub-address','pub-contact','pub-reqtype','pub-purpose'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
-    $('pub-success').style.display='flex';
-    setTimeout(()=>{ const el=$('pub-success'); if(el) el.style.display='none'; }, 7000);
+    const data = {
+      name: `${fn} ${ln}`,
+      firstName: fn, lastName: ln,
+      birthday: bday, gender, address: addr,
+      contact: v('pub-contact'),
+      reqType: reqtype,
+      status: 'Pending'
+    };
+
+    if (reqtype === 'Register as Resident') {
+      // Store full registration data
+      data.middleName  = v('pub-mname');
+      data.civilStatus = v('pub-civil');
+      data.religion    = v('pub-religion');
+      data.householdId = v('pub-household');
+      data.purpose     = 'New resident registration request';
+      data.subType     = 'registration';
+    } else if (reqtype === 'Request to Leave Barangay' || reqtype === 'Request Data Removal') {
+      data.leaveReason  = v('pub-leave-reason');
+      data.newAddress   = v('pub-new-address');
+      data.purpose      = v('pub-purpose') || v('pub-leave-reason');
+      data.subType      = reqtype === 'Request Data Removal' ? 'removal' : 'departure';
+    } else {
+      data.purpose = v('pub-purpose');
+    }
+
+    await dbPush('requests', data);
+
+    // Clear all fields
+    ['pub-fname','pub-lname','pub-mname','pub-bday','pub-gender','pub-address','pub-contact',
+     'pub-reqtype','pub-purpose','pub-civil','pub-religion','pub-household','pub-leave-reason','pub-new-address']
+      .forEach(id=>{ const el=eid(id); if(el) el.value=''; });
+    handleReqTypeChange(); // reset extra fields visibility
+
+    eid('pub-success').style.display='flex';
+    setTimeout(()=>{ const el=eid('pub-success'); if(el) el.style.display='none'; }, 8000);
   } catch(e) { errEl.textContent='Failed: '+e.message; errEl.style.display='flex'; }
   btn.innerHTML='📤 Submit Request'; btn.disabled=false;
 }
@@ -1230,20 +1518,21 @@ async function submitPublicRequest() {
 // MODAL
 // ════════════════════════════════════════════════
 function openModal(title, body, buttons=[]) {
-  $('modal-title').textContent = title;
-  $('modal-body').innerHTML = body;
-  $('modal-footer').innerHTML = buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.action}">${b.label}</button>`).join('');
-  $('modal').style.display = 'flex';
+  eid('modal-title').textContent = title;
+  eid('modal-body').innerHTML = body;
+  eid('modal-footer').innerHTML = buttons.map(b=>`<button class="btn ${b.cls}" onclick="${b.action}">${b.label}</button>`).join('');
+  eid('modal').style.display = 'flex';
 }
-function closeModal() { $('modal').style.display='none'; }
+function closeModal() { eid('modal').style.display='none'; }
 
 // ════════════════════════════════════════════════
 // BOOT
 // ════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  $('splash').style.display = 'flex';
-  $('app').style.display = 'none';
-  $('public-page').style.display = 'none';
+  // Public portal is the default landing page
+  eid('public-page').style.display = 'block';
+  eid('splash').style.display = 'none';
+  eid('app').style.display = 'none';
 });
 </script>
 </body>
