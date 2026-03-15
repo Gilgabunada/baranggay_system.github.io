@@ -255,6 +255,19 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>
     </div>
 
+    <div class="public-form-wrap" style="margin-bottom:16px">
+      <div class="card">
+        <div style="font-weight:700;font-size:1rem;margin-bottom:4px">Check Your Request Status</div>
+        <div style="font-size:.82rem;color:var(--text2);margin-bottom:14px">Enter your full name and birthday to see the status of your submitted request.</div>
+        <div class="grid-2" style="gap:10px;margin-bottom:10px">
+          <div class="form-group" style="margin:0"><label>Full Name *</label><input type="text" id="chk-name" placeholder="e.g. Juan dela Cruz"></div>
+          <div class="form-group" style="margin:0"><label>Birthday *</label><input type="date" id="chk-bday"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="checkRequestStatus()" style="width:100%">Check Status</button>
+        <div id="chk-result" style="margin-top:12px;display:none"></div>
+      </div>
+    </div>
+
     <div class="public-form-wrap">
       <div class="card">
         <div id="pub-success" class="alert alert-success" style="display:none">Request submitted! The Barangay Secretary will review and process it soon.</div>
@@ -626,12 +639,13 @@ const BRGY = {
   name:        'Barangay Babag',       // e.g. 'Barangay Poblacion'
   municipality:'Cebu, City',         // e.g. 'Pototan'
   province:    'Cebu',             // e.g. 'Iloilo'
-  captain:     'Gil Gabunada (test)',    // e.g. 'Hon. Juan dela Cruz'
-  secretary:   'Gil Gabunada (test)',  // e.g. 'Maria Santos'
+  captain:     'Gil Gabunada',    // e.g. 'Hon. Juan dela Cruz'
+  secretary:   'Gil Gabunada',  // e.g. 'Maria Santos'
+  skChairman:  'Gil Gabunada', // e.g. 'Jose Reyes'
   logoUrl:     '',                        // paste image URL or base64 here, leave '' for none
   // Certificate footer details
-  contactNo:   '09199452799',                        // barangay contact number
-  email:       'Barangaybabag@gmail.com',                        // barangay email
+  contactNo:   '09191234567',                        // barangay contact number
+  email:       'BarangayBabag@gmail.com',                        // barangay email
 };
 // ════════════════════════════════════════════════
 // ════════════════════════════════════════════════
@@ -977,7 +991,7 @@ function initApp() {
   showApp();
   eid('user-avatar').textContent = (currentUser.name||'?')[0].toUpperCase();
   eid('user-name-display').textContent = currentUser.name || currentUser.email;
-  eid('user-role-display').textContent = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Dept.' }[currentUser.role] || currentUser.role;
+  eid('user-role-display').textContent = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Dept.', sk:'Sk. Chairman' }[currentUser.role] || currentUser.role;
   buildNav();
   navigateTo('dashboard');
   loadEmailJSConfig(); // load saved EmailJS credentials from Firebase
@@ -1000,6 +1014,7 @@ const NAV = {
     { section:'Residents' },
     { id:'residents', icon:'⊞', label:'Residents List' },
     { id:'households', icon:'⌂', label:'Households' },
+    { id:'master-lists', icon:'▦', label:'Master Lists' },
     { section:'Documents' },
     { id:'certificates', icon:'⊡', label:'Brgy. Certificates' },
     { id:'clearances', icon:'◉', label:'Brgy. Clearances' },
@@ -1027,6 +1042,21 @@ const NAV = {
     { section:'Communications' },
     { id:'email-blast', icon:'@', label:'Email Blast' },
     { id:'primary-care', icon:'⊕', label:'Primary Healthcare' }
+  ],
+  sk: [
+    { id:'dashboard', icon:'◈', label:'Dashboard' },
+    { section:'Youth' },
+    { id:'youth-roster', icon:'⊞', label:'Youth Roster' },
+    { id:'osy-list', icon:'◫', label:'Out-of-School Youth' },
+    { id:'sk-master-list', icon:'▦', label:'Youth Master Lists' },
+    { section:'Programs' },
+    { id:'sk-programs', icon:'▦', label:'SK Programs' },
+    { section:'Records' },
+    { id:'sk-blotter', icon:'≡', label:'Blotter (Youth)' },
+    { id:'sk-health', icon:'✚', label:'Health Records (Youth)' },
+    { section:'Communications' },
+    { id:'announcements', icon:'◎', label:'Announcements' },
+    { id:'email-blast', icon:'@', label:'Email Blast' }
   ]
 };
 
@@ -1042,20 +1072,39 @@ function buildNav() {
 const PAGES = {
   dashboard, residents, households, certificates, clearances, indigency, business,
   blotters, summons, requests,
+  'master-lists': masterLists,
   'health-records': healthRecords, vaccines, maternal,
   'walkin-care': walkinCare, nutrition, financialAid,
   'health-edu': healthEdu, 'primary-care': primaryCare,
   announcements, 'summary-report': summaryReport,
   'email-blast': emailBlast,
-  'audit-log': auditLog
+  'audit-log': auditLog,
+  'youth-roster': youthRoster,
+  'osy-list': osyList,
+  'sk-programs': skPrograms,
+  'sk-blotter': skBlotter,
+  'sk-health': skHealth,
+  'sk-master-list': skMasterList
 };
 
+// Pages SK is NOT allowed to access
+const SK_BLOCKED = new Set([
+  'residents','households','certificates','clearances','indigency','business',
+  'blotters','summons','requests','master-lists','financial-aid',
+  'health-records','walkin-care','vaccines','maternal','nutrition',
+  'health-edu','primary-care','summary-report','audit-log'
+]);
+
 function navigateTo(page) {
+  if (currentUser.role === 'sk' && SK_BLOCKED.has(page)) {
+    showToast('Access restricted for Sk. Chairman role.', 'error');
+    return;
+  }
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   const n = eid(`nav-${page}`); if (n) n.classList.add('active');
   loading();
   if (PAGES[page]) PAGES[page]();
-  else eid('main-content').innerHTML = '<div class="empty-state"><div class="emoji">!<//div>Coming soon</div>';
+  else eid('main-content').innerHTML = '<div class="empty-state"><div class="emoji">—</div>Coming soon</div>';
 }
 
 // ════════════════════════════════════════════════
@@ -1063,6 +1112,57 @@ function navigateTo(page) {
 // ════════════════════════════════════════════════
 async function dashboard() {
   const role = currentUser.role;
+
+  if (role === 'sk') {
+    const [res, osy, prog, bl] = await Promise.all([
+      dbList('residents'), dbList('osyRecords'), dbList('skPrograms'), dbList('blotters')
+    ]);
+    const youth     = res.filter(r => calcAge(r.birthdate) <= 30);
+    const children  = res.filter(r => calcAge(r.birthdate) < 15);
+    const male      = youth.filter(r => r.gender === 'Male').length;
+    const female    = youth.filter(r => r.gender === 'Female').length;
+    const active    = prog.filter(p => p.status === 'Ongoing').length;
+    const planned   = prog.filter(p => p.status === 'Planned').length;
+    const youthNames = new Set(youth.map(r=>`${r.firstName} ${r.lastName}`.toLowerCase()));
+    const youthBl   = bl.filter(b => youthNames.has((b.complainant||'').toLowerCase()) || youthNames.has((b.respondent||'').toLowerCase()));
+    const openBl    = youthBl.filter(b => b.status !== 'Resolved' && b.status !== 'Dismissed').length;
+
+    eid('main-content').innerHTML = `
+      <div style="margin-bottom:22px">
+        <div class="page-title">SK Dashboard</div>
+        <div class="page-sub">${new Date().toLocaleDateString('en-PH',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card green"><div class="stat-icon">Youth</div><div class="stat-value">${youth.length}</div><div class="stat-label">Youth (15–30)</div></div>
+        <div class="stat-card blue"><div class="stat-icon">Children</div><div class="stat-value">${children.length}</div><div class="stat-label">Children (below 15)</div></div>
+        <div class="stat-card blue"><div class="stat-icon">Male</div><div class="stat-value">${male}</div><div class="stat-label">Male Youth</div></div>
+        <div class="stat-card purple"><div class="stat-icon">Female</div><div class="stat-value">${female}</div><div class="stat-label">Female Youth</div></div>
+        <div class="stat-card yellow"><div class="stat-icon">OSY</div><div class="stat-value">${osy.length}</div><div class="stat-label">Out-of-School Youth</div></div>
+        <div class="stat-card green"><div class="stat-icon">Active</div><div class="stat-value">${active}</div><div class="stat-label">Active SK Programs</div></div>
+        <div class="stat-card yellow"><div class="stat-icon">Planned</div><div class="stat-value">${planned}</div><div class="stat-label">Planned Programs</div></div>
+        <div class="stat-card ${openBl>0?'red':'green'}"><div class="stat-icon">Blotter</div><div class="stat-value">${openBl}</div><div class="stat-label">Open Youth Cases</div></div>
+      </div>
+      <div class="grid-2" style="gap:16px;margin-top:4px">
+        <div class="card">
+          <div style="font-weight:600;margin-bottom:13px">Quick Actions</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-primary" onclick="navigateTo('youth-roster')">View Youth Roster</button>
+            <button class="btn btn-ghost" onclick="navigateTo('osy-list')">Manage OSY List</button>
+            <button class="btn btn-ghost" onclick="navigateTo('sk-programs')">View Programs</button>
+            <button class="btn btn-ghost" onclick="navigateTo('announcements')">Post Announcement</button>
+          </div>
+        </div>
+        <div class="card">
+          <div style="font-weight:600;margin-bottom:13px">Youth Overview</div>
+          <div class="info-row"><span class="info-label">Total Youth (15–30)</span><span class="info-value"><strong>${youth.length}</strong></span></div>
+          <div class="info-row"><span class="info-label">Out-of-School</span><span class="info-value"><span class="badge badge-yellow">${osy.length}</span></span></div>
+          <div class="info-row"><span class="info-label">Active Programs</span><span class="info-value"><span class="badge badge-green">${active}</span></span></div>
+          <div class="info-row"><span class="info-label">Open Blotter Cases</span><span class="info-value"><span class="badge ${openBl>0?'badge-red':'badge-green'}">${openBl}</span></span></div>
+          ${openBl>0?`<div class="alert alert-error" style="margin-top:10px">${openBl} unresolved youth blotter case(s)</div>`:''}
+        </div>
+      </div>`;
+    return;
+  }
 
   if (role === 'health') {
     const [res, hr, vc, mt, nt, wi] = await Promise.all([
@@ -1204,6 +1304,518 @@ async function dashboard() {
           </div>`).join('') : '<div style="color:var(--text3)">No documents yet.</div>'}
       </div>
     </div>`;
+}
+
+
+
+// ════════════════════════════════════════════════
+// SK FUNCTIONS
+// ════════════════════════════════════════════════
+function isYouth(r) {
+  const a = calcAge(r.birthdate);
+  return typeof a === 'number' && a >= 15 && a <= 30;
+}
+function isChild(r) {
+  const a = calcAge(r.birthdate);
+  return typeof a === 'number' && a < 15;
+}
+
+async function youthRoster(page=1) {
+  const list = (await dbList('residents')).filter(r => calcAge(r.birthdate) <= 30);
+  list.sort((a,b) => (a.lastName||'').localeCompare(b.lastName||''));
+  const { items, page:pg, pages } = paginate(list, page);
+  eid('main-content').innerHTML = `
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Youth Roster</div>
+        <div class="page-sub">${list.length} youth resident(s) — 30 years old and below</div>
+      </div>
+      <button class="export-btn" onclick="exportYouthRoster()">Export CSV</button>
+    </div>
+    <div class="card" style="padding:0"><div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Age</th><th>Gender</th><th>Civil Status</th><th>Address</th><th>Contact</th></tr></thead>
+      <tbody>
+        ${items.length ? items.map(r=>`<tr>
+          <td><div style="display:flex;align-items:center;gap:9px;min-width:0">${avatarHtml(r.photo,r.firstName+' '+r.lastName,30)}<strong>${r.lastName}, ${r.firstName}</strong></div></td>
+          <td>${calcAge(r.birthdate)}</td>
+          <td>${r.gender||'—'}</td>
+          <td>${r.civilStatus||'—'}</td>
+          <td>${r.address||'—'}</td>
+          <td>${r.contact||'—'}</td>
+        </tr>`).join('') : `<tr><td colspan="6"><div class="empty-state"><div class="emoji">—</div>No youth residents found.</div></td></tr>`}
+      </tbody>
+    </table></div>
+    ${paginationHtml(pg, pages, 'youthRoster')}
+    </div>`;
+}
+
+async function exportYouthRoster() {
+  const list = (await dbList('residents')).filter(r => calcAge(r.birthdate) <= 30);
+  exportCSV('youth-roster.csv',
+    ['Last Name','First Name','Middle Name','Age','Birthdate','Gender','Civil Status','Address','Contact','Email'],
+    list.map(r=>[r.lastName,r.firstName,r.middleName,calcAge(r.birthdate),r.birthdate,r.gender,r.civilStatus,r.address,r.contact,r.email])
+  );
+}
+
+async function osyList(page=1) {
+  const items = (await dbList('osyRecords')).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const { items:rows, page:pg, pages } = paginate(items, page);
+  eid('main-content').innerHTML = `
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Out-of-School Youth</div>
+        <div class="page-sub">${items.length} record(s)</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="export-btn" onclick="exportOSY()">Export CSV</button>
+        <button class="btn btn-primary" onclick="openAddOSY()">Add OSY Record</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div class="table-wrap"><table>
+      <thead><tr><th>Name</th><th>Age</th><th>Gender</th><th>Last Grade</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${rows.length ? rows.map(o=>`<tr>
+          <td><strong>${o.name||'—'}</strong></td>
+          <td>${o.age||'—'}</td>
+          <td>${o.gender||'—'}</td>
+          <td>${o.lastGrade||'—'}</td>
+          <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.reason||'—'}</td>
+          <td><span class="badge ${o.status==='Enrolled'?'badge-green':o.status==='Working'?'badge-blue':'badge-yellow'}">${o.status||'—'}</span></td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-ghost btn-sm" onclick="viewOSY('${o.id}')">View</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteOSY('${o.id}')">Delete</button>
+          </td>
+        </tr>`).join('') : `<tr><td colspan="7"><div class="empty-state"><div class="emoji">—</div>No OSY records yet.</div></td></tr>`}
+      </tbody>
+    </table></div>
+    ${paginationHtml(pg, pages, 'osyList')}
+    </div>`;
+}
+
+function openAddOSY() {
+  openModal('Add Out-of-School Youth Record', `
+    <div class="grid-2">
+      <div class="form-group"><label>Full Name *</label><input type="text" id="osy-name" placeholder="Full name"></div>
+      <div class="form-group"><label>Age *</label><input type="number" id="osy-age" min="10" max="30" placeholder="10–30"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>Gender</label>
+        <select id="osy-gender"><option value="">—</option><option>Male</option><option>Female</option></select>
+      </div>
+      <div class="form-group"><label>Address</label><input type="text" id="osy-address" placeholder="Sitio / Street"></div>
+    </div>
+    <div class="form-group"><label>Last Grade / Year Completed</label>
+      <select id="osy-grade">
+        <option value="">— Select —</option>
+        ${['Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6',
+           'Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12',
+           'First Year College','Second Year College','Third Year College','Fourth Year College','Vocational'].map(g=>`<option>${g}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Reason for Dropping Out *</label>
+      <select id="osy-reason">
+        <option value="">— Select —</option>
+        ${['Financial Difficulty','Work / Employment','Early Pregnancy','Marriage','Family Problems',
+           'Illness / Disability','Lack of Interest','Distance to School','Other'].map(r=>`<option>${r}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group"><label>Current Status</label>
+      <select id="osy-status">
+        <option value="Inactive">Inactive / Not enrolled</option>
+        <option value="Working">Working</option>
+        <option value="Enrolled">Re-enrolled / ALS</option>
+        <option value="Vocational">Vocational Training</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Contact Number</label><input type="text" id="osy-contact" placeholder="09XX-XXX-XXXX"></div>
+    <div class="form-group"><label>Remarks / Notes</label><textarea id="osy-notes" placeholder="Additional information…"></textarea></div>
+    <div id="osy-err" class="alert alert-error" style="display:none"></div>`,
+  [{ label:'Cancel', cls:'btn-ghost', action:'closeModal()' },
+   { label:'Save Record', cls:'btn-primary', action:'saveOSY()' }]);
+}
+
+async function saveOSY() {
+  const name=v('osy-name'), age=v('osy-age'), reason=v('osy-reason');
+  if (!name||!age||!reason) { setErr('osy-err','Please fill all required fields.'); return; }
+  try {
+    await dbPush('osyRecords', {
+      name, age, gender:v('osy-gender'), address:v('osy-address'),
+      lastGrade:v('osy-grade'), reason, status:v('osy-status')||'Inactive',
+      contact:v('osy-contact'), notes:v('osy-notes'), recordedBy:currentUser.name
+    });
+    await auditWrite('OSY Record', `${name} — ${reason}`);
+    closeModal(); showToast('OSY record saved.'); osyList();
+  } catch(e) { setErr('osy-err', e.message); }
+}
+
+async function viewOSY(id) {
+  const all = await dbList('osyRecords');
+  const o = all.find(x=>x.id===id); if (!o) return;
+  const statusColor = o.status==='Enrolled'?'badge-green':o.status==='Working'?'badge-blue':'badge-yellow';
+  openModal(`OSY: ${o.name}`, `
+    <div class="info-row"><span class="info-label">Name</span><span class="info-value"><strong>${o.name}</strong></span></div>
+    <div class="info-row"><span class="info-label">Age / Gender</span><span class="info-value">${o.age||'—'} / ${o.gender||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Address</span><span class="info-value">${o.address||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Last Grade</span><span class="info-value">${o.lastGrade||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Reason</span><span class="info-value">${o.reason||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Status</span><span class="info-value"><span class="badge ${statusColor}">${o.status||'—'}</span></span></div>
+    <div class="info-row"><span class="info-label">Contact</span><span class="info-value">${o.contact||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Notes</span><span class="info-value">${o.notes||'—'}</span></div>
+    <div class="info-row"><span class="info-label">Recorded By</span><span class="info-value">${o.recordedBy||'—'}</span></div>`,
+  [{ label:'Close', cls:'btn-ghost', action:'closeModal()' }]);
+}
+
+async function deleteOSY(id) {
+  if (!confirm('Delete this OSY record?')) return;
+  await dbRemove(`osyRecords/${id}`);
+  await auditWrite('Delete OSY Record', `ID: ${id}`);
+  osyList();
+}
+
+async function exportOSY() {
+  const all = await dbList('osyRecords');
+  exportCSV('osy-list.csv',
+    ['Name','Age','Gender','Address','Last Grade','Reason','Status','Contact','Notes'],
+    all.map(o=>[o.name,o.age,o.gender,o.address,o.lastGrade,o.reason,o.status,o.contact,o.notes])
+  );
+}
+
+async function skPrograms(page=1) {
+  const items = (await dbList('skPrograms')).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const { items:rows, page:pg, pages } = paginate(items, page);
+  const active    = items.filter(p=>p.status==='Ongoing').length;
+  const completed = items.filter(p=>p.status==='Completed').length;
+  const planned   = items.filter(p=>p.status==='Planned').length;
+  eid('main-content').innerHTML = `
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">SK Programs</div>
+        <div class="page-sub">${items.length} program(s)</div>
+      </div>
+      <button class="btn btn-primary" onclick="openAddSKProgram()">Add Program</button>
+    </div>
+    <div class="stats-grid" style="margin-bottom:16px">
+      <div class="stat-card green"><div class="stat-icon">Active</div><div class="stat-value">${active}</div><div class="stat-label">Ongoing</div></div>
+      <div class="stat-card blue"><div class="stat-icon">Done</div><div class="stat-value">${completed}</div><div class="stat-label">Completed</div></div>
+      <div class="stat-card yellow"><div class="stat-icon">Plan</div><div class="stat-value">${planned}</div><div class="stat-label">Planned</div></div>
+      <div class="stat-card purple"><div class="stat-icon">Total</div><div class="stat-value">${items.length}</div><div class="stat-label">All Programs</div></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${rows.length ? rows.map(p=>{
+        const sc = p.status==='Ongoing'?'badge-green':p.status==='Completed'?'badge-blue':p.status==='Cancelled'?'badge-red':'badge-yellow';
+        return `
+        <div class="card" style="border-left:3px solid var(--accent)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+            <div style="flex:1">
+              <div style="display:flex;align-items:center;gap:7px;margin-bottom:4px;flex-wrap:wrap">
+                <span class="badge ${sc}">${p.status||'—'}</span>
+                ${p.category?`<span class="badge badge-blue" style="font-size:.68rem">${p.category}</span>`:''}
+                <span style="font-size:.73rem;color:var(--text3)">${p.startDate||'—'}${p.endDate?' → '+p.endDate:''}</span>
+              </div>
+              <div style="font-weight:700;font-size:.95rem;margin-bottom:4px">${p.title||'—'}</div>
+              <div style="font-size:.82rem;color:var(--text2);line-height:1.5">${p.description||''}</div>
+              ${p.beneficiaries?`<div style="font-size:.75rem;color:var(--text3);margin-top:4px">Beneficiaries: ${p.beneficiaries}</div>`:''}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
+              <button class="btn btn-ghost btn-sm" onclick="editSKProgram('${p.id}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteSKProgram('${p.id}')">Delete</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('') : `<div class="empty-state"><div class="emoji">—</div>No SK programs yet.</div>`}
+    </div>
+    ${paginationHtml(pg, pages, 'skPrograms')}`;
+}
+
+function skProgramForm(p={}) {
+  const cats = ['Sports & Recreation','Livelihood','Health & Nutrition','Environment','Education','Values Formation','Anti-Drug','Other'];
+  return `
+    <div class="form-group"><label>Program Title *</label><input type="text" id="skp-title" value="${p.title||''}" placeholder="e.g. Kabataan Kontra Droga"></div>
+    <div class="grid-2">
+      <div class="form-group"><label>Category</label>
+        <select id="skp-cat">${cats.map(c=>`<option value="${c}" ${p.category===c?'selected':''}>${c}</option>`).join('')}</select>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="skp-status">
+          ${['Planned','Ongoing','Completed','Cancelled'].map(s=>`<option value="${s}" ${(p.status||'Planned')===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label>Start Date</label><input type="date" id="skp-start" value="${p.startDate||''}"></div>
+      <div class="form-group"><label>End Date</label><input type="date" id="skp-end" value="${p.endDate||''}"></div>
+    </div>
+    <div class="form-group"><label>Description</label><textarea id="skp-desc" placeholder="What is this program about?">${p.description||''}</textarea></div>
+    <div class="form-group"><label>Target Beneficiaries</label><input type="text" id="skp-bene" value="${p.beneficiaries||''}" placeholder="e.g. All youth 15–24, OSY, etc."></div>
+    <div class="form-group"><label>Budget / Funding (PHP)</label><input type="text" id="skp-budget" value="${p.budget||''}" placeholder="e.g. 5,000"></div>
+    <div class="form-group"><label>Remarks / Outcome</label><textarea id="skp-remarks" placeholder="Notes, results, attendance…">${p.remarks||''}</textarea></div>
+    <div id="skp-err" class="alert alert-error" style="display:none"></div>`;
+}
+
+function openAddSKProgram() {
+  openModal('Add SK Program', skProgramForm(), [
+    { label:'Cancel', cls:'btn-ghost', action:'closeModal()' },
+    { label:'Save Program', cls:'btn-primary', action:'saveSKProgram()' }
+  ]);
+}
+
+async function editSKProgram(id) {
+  const all = await dbList('skPrograms');
+  const p = all.find(x=>x.id===id); if (!p) return;
+  openModal('Edit SK Program', skProgramForm(p), [
+    { label:'Cancel', cls:'btn-ghost', action:'closeModal()' },
+    { label:'Update', cls:'btn-primary', action:`saveSKProgram('${id}')` }
+  ]);
+}
+
+async function saveSKProgram(id=null) {
+  const title = v('skp-title');
+  if (!title) { setErr('skp-err','Program title is required.'); return; }
+  const data = {
+    title, category:v('skp-cat'), status:v('skp-status')||'Planned',
+    startDate:v('skp-start'), endDate:v('skp-end'),
+    description:v('skp-desc'), beneficiaries:v('skp-bene'),
+    budget:v('skp-budget'), remarks:v('skp-remarks'),
+    recordedBy:currentUser.name
+  };
+  try {
+    if (id) await dbUpdate(`skPrograms/${id}`, data);
+    else    await dbPush('skPrograms', data);
+    await auditWrite('SK Program', `${data.status}: ${title}`);
+    closeModal(); showToast(id?'Program updated.':'Program added.'); skPrograms();
+  } catch(e) { setErr('skp-err', e.message); }
+}
+
+async function deleteSKProgram(id) {
+  if (!confirm('Delete this program?')) return;
+  await dbRemove(`skPrograms/${id}`);
+  await auditWrite('Delete SK Program', `ID: ${id}`);
+  skPrograms();
+}
+
+// SK Blotter — filtered to youth (30 and below)
+async function skBlotter() {
+  const [items, resList] = await Promise.all([dbList('blotters'), dbList('residents')]);
+  const resMap = {}; resList.forEach(r=>{ resMap[r.id]=r; });
+  // Filter blotters involving youth residents (by name match — approximate)
+  const youthNames = new Set(resList.filter(r=>calcAge(r.birthdate)<=30).map(r=>`${r.firstName} ${r.lastName}`.toLowerCase()));
+  const youthItems = items.filter(b =>
+    youthNames.has((b.complainant||'').toLowerCase()) ||
+    youthNames.has((b.respondent||'').toLowerCase()) ||
+    (b.complainant||'').toLowerCase().includes('youth') ||
+    (b.respondent||'').toLowerCase().includes('youth')
+  );
+  eid('main-content').innerHTML = `
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Blotter Records (Youth)</div>
+        <div class="page-sub">${youthItems.length} case(s) involving residents 30 and below</div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div class="table-wrap"><table>
+      <thead><tr><th>Case ID</th><th>Complainant</th><th>Respondent</th><th>Incident</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody>
+        ${youthItems.length ? youthItems.map(b=>`<tr>
+          <td><span style="font-size:.75rem;color:var(--text3)">${b.id.slice(0,8)}</span></td>
+          <td>${b.complainant||'—'}</td>
+          <td>${b.respondent||'—'}</td>
+          <td>${b.incident||'—'}</td>
+          <td>${b.incidentDate||'—'}</td>
+          <td><span class="badge ${b.status==='Resolved'?'badge-green':b.status==='Pending'?'badge-yellow':'badge-blue'}">${b.status||'—'}</span></td>
+        </tr>`).join('') : `<tr><td colspan="6"><div class="empty-state"><div class="emoji">—</div>No youth-related blotter cases.</div></td></tr>`}
+      </tbody>
+    </table></div></div>`;
+}
+
+// SK Health — filtered to residents 30 and below
+async function skHealth(page=1) {
+  const [items, resList] = await Promise.all([dbList('healthRecords'), dbList('residents')]);
+  const resMap = {}; resList.forEach(r=>{ resMap[r.id]=r; });
+  const youthIds = new Set(resList.filter(r=>calcAge(r.birthdate)<=30).map(r=>r.id));
+  const youthItems = items.filter(h=>youthIds.has(h.residentId)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const { items:rows, page:pg, pages } = paginate(youthItems, page);
+  eid('main-content').innerHTML = `
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Health Records (Youth)</div>
+        <div class="page-sub">${youthItems.length} record(s) — residents 30 and below</div>
+      </div>
+    </div>
+    <div class="card" style="padding:0"><div class="table-wrap"><table>
+      <thead><tr><th>Resident</th><th>Age</th><th>Visit Date</th><th>Chief Complaint</th><th>Wound Care</th><th>Hospitalized</th></tr></thead>
+      <tbody>
+        ${rows.length ? rows.map(h=>{const r=resMap[h.residentId]||{}; return `<tr>
+          <td><strong>${r.firstName||'—'} ${r.lastName||''}</strong></td>
+          <td>${r.birthdate?calcAge(r.birthdate):' —'}</td>
+          <td>${h.visitDate||'—'}</td>
+          <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.complaint||'—'}</td>
+          <td>${h.woundCare?`<span class="badge badge-yellow">${h.woundCare}</span>`:'—'}</td>
+          <td>${h.hospitalized==='Yes'?'<span class="badge badge-red">Referred</span>':'No'}</td>
+        </tr>`; }).join('') : `<tr><td colspan="6"><div class="empty-state"><div class="emoji">—</div>No health records for youth.</div></td></tr>`}
+      </tbody>
+    </table></div>
+    ${paginationHtml(pg, pages, 'skHealth')}
+    </div>`;
+}
+
+
+async function skMasterList() {
+  eid('main-content').innerHTML = `<div class="page-title" style="margin-bottom:6px">Youth Master Lists</div><div style="color:var(--text2);font-size:.85rem">Loading…</div>`;
+  const [resList, nutritionRecs] = await Promise.all([dbList('residents'), dbList('nutritionRecords')]);
+
+  const youth    = resList.filter(r => { const a=calcAge(r.birthdate); return typeof a==='number' && a>=15 && a<=30; });
+  const children = resList.filter(r => { const a=calcAge(r.birthdate); return typeof a==='number' && a<15; });
+  const maleY    = youth.filter(r=>r.gender==='Male');
+  const femaleY  = youth.filter(r=>r.gender==='Female');
+  const maleC    = children.filter(r=>r.gender==='Male');
+  const femaleC  = children.filter(r=>r.gender==='Female');
+  const under5   = children.filter(r=>calcAge(r.birthdate)<=5);
+  const youthIds = new Set([...youth,...children].map(r=>r.id));
+  const nutriYouth = nutritionRecs.filter(n=>youthIds.has(n.residentId));
+  const sam      = nutriYouth.filter(n=>n.status==='SAM');
+  const mam      = nutriYouth.filter(n=>n.status==='MAM');
+  const atRisk   = nutriYouth.filter(n=>n.status==='At Risk');
+  const inFeeding= nutriYouth.filter(n=>n.feedingProgram==='Yes');
+  const resMap2  = {}; resList.forEach(r=>{resMap2[r.id]=r;});
+
+  // Store for print
+  window._skLists = { maleY, femaleY, maleC, femaleC, sam, mam, atRisk, inFeeding, under5, resMap2 };
+
+  const resRow = r => `<tr>
+    <td><strong>${r.lastName}, ${r.firstName}</strong></td>
+    <td>${calcAge(r.birthdate)}</td><td>${r.gender||'—'}</td>
+    <td>${r.address||'—'}</td><td>${r.contact||'—'}</td></tr>`;
+
+  const nutrRow = n => { const r=resMap2[n.residentId]||{}; return `<tr>
+    <td><strong>${r.firstName||'?'} ${r.lastName||''}</strong></td>
+    <td>${r.birthdate?calcAge(r.birthdate):'—'}</td>
+    <td>${n.weighDate||'—'}</td><td>${n.weight||'—'} kg</td>
+    <td><span class="badge ${n.status==='SAM'?'badge-red':'badge-yellow'}">${n.status}</span></td>
+    <td>${n.feedingProgram==='Yes'?'<span class="badge badge-green">Yes</span>':'No'}</td></tr>`;};
+
+  const tbl = (key, title, list, cols, rowFn) => `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-weight:600;font-size:.9rem">${title} <span style="color:var(--text3);font-weight:400">(${list.length})</span></div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="printSKList('${key}')" ${!list.length?'disabled':''}>Print</button>
+          <button class="export-btn" onclick="exportSKList('${key}')" ${!list.length?'disabled':''}>Export CSV</button>
+        </div>
+      </div>
+      ${list.length ? `<div class="table-wrap"><table>
+        <thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
+        <tbody>${list.map(rowFn).join('')}</tbody>
+      </table></div>` : `<div style="color:var(--text3);font-size:.84rem">No records.</div>`}
+    </div>`;
+
+  eid('main-content').innerHTML = `
+    <div style="margin-bottom:20px">
+      <div class="page-title">Youth Master Lists</div>
+      <div class="page-sub">Residents 30 years old and below — filtered by category</div>
+    </div>
+    <div class="stats-grid" style="margin-bottom:20px">
+      <div class="stat-card green"><div class="stat-icon">Youth</div><div class="stat-value">${youth.length}</div><div class="stat-label">Youth (15–30)</div></div>
+      <div class="stat-card blue"><div class="stat-icon">Child</div><div class="stat-value">${children.length}</div><div class="stat-label">Children (below 15)</div></div>
+      <div class="stat-card blue"><div class="stat-icon">Male</div><div class="stat-value">${maleY.length+maleC.length}</div><div class="stat-label">Total Male</div></div>
+      <div class="stat-card purple"><div class="stat-icon">Female</div><div class="stat-value">${femaleY.length+femaleC.length}</div><div class="stat-label">Total Female</div></div>
+      <div class="stat-card red"><div class="stat-icon">SAM</div><div class="stat-value">${sam.length}</div><div class="stat-label">SAM Cases</div></div>
+      <div class="stat-card yellow"><div class="stat-icon">At Risk</div><div class="stat-value">${mam.length+atRisk.length}</div><div class="stat-label">MAM / At Risk</div></div>
+      <div class="stat-card green"><div class="stat-icon">Feeding</div><div class="stat-value">${inFeeding.length}</div><div class="stat-label">In Feeding Program</div></div>
+      <div class="stat-card blue"><div class="stat-icon">Under 5</div><div class="stat-value">${under5.length}</div><div class="stat-label">Children Under 5</div></div>
+    </div>
+    ${tbl('maleY','Male Youth (15–30)', maleY, ['Name','Age','Gender','Address','Contact'], resRow)}
+    ${tbl('femaleY','Female Youth (15–30)', femaleY, ['Name','Age','Gender','Address','Contact'], resRow)}
+    ${tbl('maleC','Male Children (below 15)', maleC, ['Name','Age','Gender','Address','Contact'], resRow)}
+    ${tbl('femaleC','Female Children (below 15)', femaleC, ['Name','Age','Gender','Address','Contact'], resRow)}
+    ${tbl('atRiskAll','SAM / MAM / At-Risk (Youth & Children)', [...sam,...mam,...atRisk],
+      ['Name','Age','Date Weighed','Weight','Status','Feeding'], nutrRow)}
+    ${tbl('inFeeding','In Feeding Program', inFeeding,
+      ['Name','Age','Date Weighed','Weight','Status','Food Given'],
+      n=>{ const r=resMap2[n.residentId]||{}; return `<tr>
+        <td><strong>${r.firstName||'?'} ${r.lastName||''}</strong></td>
+        <td>${r.birthdate?calcAge(r.birthdate):'—'}</td>
+        <td>${n.weighDate||'—'}</td><td>${n.weight||'—'} kg</td>
+        <td><span class="badge badge-green">${n.status}</span></td>
+        <td>${n.foodGiven||'—'}</td></tr>`;})}`;
+}
+
+function exportSKList(key) {
+  const d = window._skLists;
+  if (!d) return;
+  const resHeaders = ['Last Name','First Name','Age','Gender','Address','Contact'];
+  const resRows = list => list.map(r=>[r.lastName,r.firstName,calcAge(r.birthdate),r.gender,r.address,r.contact]);
+  const nutrHeaders = ['Name','Age','Date Weighed','Weight (kg)','Status','Feeding Program'];
+  const nutrRows = list => list.map(n=>{ const r=d.resMap2[n.residentId]||{}; return [r.firstName+' '+r.lastName, r.birthdate?calcAge(r.birthdate):'', n.weighDate, n.weight, n.status, n.feedingProgram]; });
+  const map = {
+    maleY:    ['male-youth.csv', resHeaders, resRows(d.maleY)],
+    femaleY:  ['female-youth.csv', resHeaders, resRows(d.femaleY)],
+    maleC:    ['male-children.csv', resHeaders, resRows(d.maleC)],
+    femaleC:  ['female-children.csv', resHeaders, resRows(d.femaleC)],
+    atRiskAll:['at-risk-sam-mam.csv', nutrHeaders, nutrRows([...d.sam,...d.mam,...d.atRisk])],
+    inFeeding:['feeding-program.csv', nutrHeaders, nutrRows(d.inFeeding)],
+  };
+  const entry = map[key];
+  if (entry) exportCSV(...entry);
+}
+
+function printSKList(key) {
+  const d = window._skLists;
+  if (!d) return;
+  const today = new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
+  const titles = { maleY:'Male Youth (15-30)', femaleY:'Female Youth (15-30)',
+    maleC:'Male Children (below 15)', femaleC:'Female Children (below 15)',
+    atRiskAll:'SAM / MAM / At-Risk Youth & Children', inFeeding:'In Feeding Program' };
+  const listMap = { maleY:d.maleY, femaleY:d.femaleY, maleC:d.maleC, femaleC:d.femaleC,
+    atRiskAll:[...d.sam,...d.mam,...d.atRisk], inFeeding:d.inFeeding };
+  const list = listMap[key] || [];
+  const title = titles[key] || key;
+  const pa = eid('print-area');
+  if (!pa) return;
+  const isNutr = key==='atRiskAll'||key==='inFeeding';
+  pa.innerHTML = `
+    <div style="font-family:'Times New Roman',serif;color:#000;padding:20px">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:11pt">Republic of the Philippines</div>
+        <div style="font-size:10pt">Province of ${BRGY.province} — Municipality of ${BRGY.municipality}</div>
+        <div style="font-size:14pt;font-weight:bold;margin-top:4px">${BRGY.name.toUpperCase()}</div>
+        <div style="font-size:11pt;font-weight:bold;margin-top:8px;text-decoration:underline">SK ${title.toUpperCase()}</div>
+        <div style="font-size:9pt;margin-top:4px">As of ${today} — Total: ${list.length} record(s)</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5pt">
+        <thead><tr style="background:#eee">
+          <th style="border:1px solid #000;padding:4px 6px;text-align:left">#</th>
+          <th style="border:1px solid #000;padding:4px 6px;text-align:left">Name</th>
+          <th style="border:1px solid #000;padding:4px 6px;text-align:left">Age</th>
+          <th style="border:1px solid #000;padding:4px 6px;text-align:left">Gender</th>
+          ${isNutr ? '<th style="border:1px solid #000;padding:4px 6px;text-align:left">Status</th><th style="border:1px solid #000;padding:4px 6px;text-align:left">Feeding</th>' : '<th style="border:1px solid #000;padding:4px 6px;text-align:left">Address</th>'}
+        </tr></thead>
+        <tbody>
+          ${list.map((item,i) => {
+            if (isNutr) {
+              const r = d.resMap2[item.residentId]||{};
+              return `<tr><td style="border:1px solid #000;padding:3px 6px">${i+1}</td>
+                <td style="border:1px solid #000;padding:3px 6px">${r.firstName||'?'} ${r.lastName||''}</td>
+                <td style="border:1px solid #000;padding:3px 6px">${r.birthdate?calcAge(r.birthdate):''}</td>
+                <td style="border:1px solid #000;padding:3px 6px">${r.gender||''}</td>
+                <td style="border:1px solid #000;padding:3px 6px">${item.status||''}</td>
+                <td style="border:1px solid #000;padding:3px 6px">${item.feedingProgram||''}</td></tr>`;
+            }
+            return `<tr><td style="border:1px solid #000;padding:3px 6px">${i+1}</td>
+              <td style="border:1px solid #000;padding:3px 6px">${item.lastName||''}, ${item.firstName||''}</td>
+              <td style="border:1px solid #000;padding:3px 6px">${calcAge(item.birthdate)}</td>
+              <td style="border:1px solid #000;padding:3px 6px">${item.gender||''}</td>
+              <td style="border:1px solid #000;padding:3px 6px">${item.address||''}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:40px;display:flex;justify-content:flex-end">
+        <div style="text-align:center;width:200px">
+          <div style="font-weight:bold">${BRGY.skChairman||'SK Chairman'}</div>
+          <div style="border-top:1px solid #000;padding-top:4px;font-size:9pt">Sk. Chairman</div>
+        </div>
+      </div>
+    </div>`;
+  window.print();
 }
 
 
@@ -2377,7 +2989,7 @@ async function applyRequest(id) {
     try {
       const req = await dbGet(`requests/${id}`);
       if (req && req.email) {
-        const senderName = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Department' }[currentUser.role] || 'Barangay Official';
+        const senderName = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Department', sk:'Sk. Chairman' }[currentUser.role] || 'Barangay Official';
         await emailjs.send(EMAILJS_KEY.serviceId, EMAILJS_KEY.templateId, {
           to_email: req.email,
           to_name:  req.name || 'Resident',
@@ -3723,6 +4335,12 @@ function emailBlast() {
       <div class="form-group"><label>Target Group *</label>
         <select id="blast-group" onchange="previewBlastRecipients()">
           <option value="">— Select group —</option>
+          ${currentUser.role === 'sk' ? `
+          <optgroup label="Youth">
+            <option value="youth">All Youth (15–30 yrs)</option>
+            <option value="under5">Children Under 5 yrs</option>
+          </optgroup>
+          ` : `
           <optgroup label="All">
             <option value="all">All Residents (with email)</option>
           </optgroup>
@@ -3741,6 +4359,7 @@ function emailBlast() {
             <option value="pregnant">Maternal / Prenatal Records</option>
             <option value="referred">Hospital-Referred Patients</option>
           </optgroup>
+          `}
         </select>
       </div>
 
@@ -3810,7 +4429,7 @@ async function testEmailJS() {
   const btn = eid('ejs-test-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   try {
-    const senderName = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Department' }[currentUser?.role] || 'Barangay Official';
+    const senderName = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Department', sk:'Sk. Chairman' }[currentUser?.role] || 'Barangay Official';
     await emailjs.send(EMAILJS_KEY.serviceId, EMAILJS_KEY.templateId, {
       to_email: testEmail,
       to_name:  'Test Recipient',
@@ -3911,7 +4530,7 @@ async function sendEmailBlast() {
     const r = targets[i];
     progText.textContent = `Sending ${i+1} of ${targets.length}… (${r.firstName} ${r.lastName})`;
     progBar.style.width  = `${Math.round((i/targets.length)*100)}%`;
-    const senderName = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Department' }[currentUser.role] || currentUser.name || 'Barangay Official';
+    const senderName = { captain:'Barangay Captain', secretary:'Barangay Secretary', health:'Healthcare Department', sk:'Sk. Chairman' }[currentUser.role] || currentUser.name || 'Barangay Official';
     try {
       await emailjs.send(EMAILJS_KEY.serviceId, EMAILJS_KEY.templateId, {
         to_email: r.email,
@@ -3939,11 +4558,13 @@ async function sendEmailBlast() {
 
 
 async function announcements() {
-  const items = (await dbList('announcements')).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  const isSK = currentUser.role === 'sk';
+  const node = isSK ? 'skAnnouncements' : 'announcements';
+  const items = (await dbList(node)).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   eid('main-content').innerHTML = `
     <div class="page-header-row">
       <div>
-        <div class="page-title">Announcements</div>
+        <div class="page-title">${isSK ? 'SK Announcements' : 'Barangay Announcements'}</div>
         <div class="page-sub">${items.length} post(s) — active ones appear on the public portal</div>
       </div>
       <button class="btn btn-primary" onclick="openAddAnnouncement()">Post Announcement</button>
@@ -3966,9 +4587,9 @@ async function announcements() {
               ${a.category ? `<div style="margin-top:6px"><span class="badge badge-blue" style="font-size:.68rem">${a.category}</span></div>` : ''}
             </div>
             <div style="display:flex;flex-direction:column;gap:5px;flex-shrink:0">
-              <button class="btn btn-ghost btn-sm" onclick="editAnnouncement('${a.id}')">Edit</button>
-              <button class="btn btn-ghost btn-sm" onclick="toggleAnnouncementStatus('${a.id}','${a.status}')">${isActive ? 'Deactivate' : 'Activate'}</button>
-              <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a.id}')">Delete</button>
+              <button class="btn btn-ghost btn-sm" onclick="editAnnouncement('${a.id}','${node}')">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="toggleAnnouncementStatus('${a.id}','${a.status}','${node}')">${isActive ? 'Deactivate' : 'Activate'}</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteAnnouncement('${a.id}','${node}')">Delete</button>
             </div>
           </div>
         </div>`;
@@ -3977,7 +4598,9 @@ async function announcements() {
 }
 
 function announcementForm(a={}) {
-  const cats = ['General','Health','Event','Emergency','Program','Notice'];
+  const cats = currentUser.role === 'sk'
+    ? ['Youth Event','SK Program','Sports','Education','Health','Anti-Drug','General','Notice']
+    : ['General','Health','Event','Emergency','Program','Notice'];
   return `
     <div class="form-group"><label>Title *</label>
       <input type="text" id="ann-title" value="${a.title||''}" placeholder="e.g. Barangay Clean-up Drive this Saturday">
@@ -4009,22 +4632,25 @@ function announcementForm(a={}) {
 }
 
 function openAddAnnouncement() {
+  const node = currentUser.role === 'sk' ? 'skAnnouncements' : 'announcements';
   openModal('Post Announcement', announcementForm(), [
     { label:'Cancel', cls:'btn-ghost', action:'closeModal()' },
-    { label:'Post', cls:'btn-primary', action:'saveAnnouncement()' }
+    { label:'Post', cls:'btn-primary', action:`saveAnnouncement(null,'${node}')` }
   ]);
 }
 
-async function editAnnouncement(id) {
-  const all = await dbList('announcements');
+async function editAnnouncement(id, node) {
+  const n = node || (currentUser.role === 'sk' ? 'skAnnouncements' : 'announcements');
+  const all = await dbList(n);
   const a = all.find(x=>x.id===id); if (!a) return;
   openModal('Edit Announcement', announcementForm(a), [
     { label:'Cancel', cls:'btn-ghost', action:'closeModal()' },
-    { label:'Save', cls:'btn-primary', action:`saveAnnouncement('${id}')` }
+    { label:'Save', cls:'btn-primary', action:`saveAnnouncement('${id}','${n}')` }
   ]);
 }
 
-async function saveAnnouncement(id=null) {
+async function saveAnnouncement(id=null, node) {
+  const n = node || (currentUser.role === 'sk' ? 'skAnnouncements' : 'announcements');
   const title = v('ann-title'), body = v('ann-body');
   if (!title || !body) { setErr('ann-err','Title and message are required.'); return; }
   const data = {
@@ -4032,66 +4658,92 @@ async function saveAnnouncement(id=null) {
     category: v('ann-cat'),
     status: v('ann-status') || 'Active',
     pinned: eid('ann-pinned')?.checked || false,
-    postedBy: currentUser.name
+    postedBy: currentUser.name,
+    postedByRole: currentUser.role
   };
   try {
-    if (id) await dbUpdate(`announcements/${id}`, data);
-    else    await dbPush('announcements', data);
+    if (id) await dbUpdate(`${n}/${id}`, data);
+    else    await dbPush(n, data);
     await auditWrite('Announcement', `${data.status}: ${title}`);
     closeModal(); showToast(id ? 'Announcement updated.' : 'Announcement posted.'); announcements();
   } catch(e) { setErr('ann-err', e.message); }
 }
 
-async function toggleAnnouncementStatus(id, current) {
+async function toggleAnnouncementStatus(id, current, node) {
+  const n = node || (currentUser.role === 'sk' ? 'skAnnouncements' : 'announcements');
   const newStatus = current === 'Active' ? 'Draft' : 'Active';
-  await dbUpdate(`announcements/${id}`, { status: newStatus });
+  await dbUpdate(`${n}/${id}`, { status: newStatus });
   await auditWrite('Announcement Status', `ID ${id} → ${newStatus}`);
   showToast(`Announcement ${newStatus === 'Active' ? 'activated' : 'deactivated'}.`);
   announcements();
 }
 
-async function deleteAnnouncement(id) {
+async function deleteAnnouncement(id, node) {
   if (!confirm('Delete this announcement?')) return;
-  await dbRemove(`announcements/${id}`);
+  const n = node || (currentUser.role === 'sk' ? 'skAnnouncements' : 'announcements');
+  await dbRemove(`${n}/${id}`);
   await auditWrite('Delete Announcement', `ID: ${id}`);
   announcements();
 }
 
 // Load active announcements on public portal
 function loadPublicAnnouncements() {
-  const catColor = { 'Emergency':'badge-red','Health':'badge-green','Event':'badge-blue','Program':'badge-blue','Notice':'badge-yellow','General':'badge-gray' };
+  const catColor = { 'Emergency':'badge-red','Health':'badge-green','Event':'badge-blue','Program':'badge-blue',
+    'Notice':'badge-yellow','General':'badge-gray','Youth Event':'badge-blue','SK Program':'badge-green',
+    'Sports':'badge-blue','Education':'badge-blue','Anti-Drug':'badge-red' };
+
+  function annCard(a) {
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap">
+        ${a.pinned ? '<span class="badge badge-yellow" style="font-size:.68rem">Pinned</span>' : ''}
+        ${a.category ? `<span class="badge ${catColor[a.category]||'badge-gray'}" style="font-size:.68rem">${a.category}</span>` : ''}
+        <span style="font-size:.72rem;color:var(--text3)">${a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : ''}</span>
+      </div>
+      <div style="font-weight:700;font-size:.95rem;margin-bottom:5px">${a.title}</div>
+      <div style="font-size:.83rem;color:var(--text2);line-height:1.65;white-space:pre-wrap">${a.body}</div>
+    </div>`;
+  }
+
+  function renderAll(brgyActive, skActive) {
+    const wrap = eid('public-announcements-wrap');
+    const list = eid('public-announcements-list');
+    if (!wrap || !list) return;
+    if (!brgyActive.length && !skActive.length) { wrap.style.display = 'none'; return; }
+    let html = '';
+    if (brgyActive.length) {
+      html += `<div style="font-weight:600;font-size:.82rem;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Barangay Announcements</div>`;
+      html += brgyActive.map(annCard).join('');
+    }
+    if (skActive.length) {
+      if (brgyActive.length) html += `<div style="margin-top:18px"></div>`;
+      html += `<div style="font-weight:600;font-size:.82rem;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">SK Announcements</div>`;
+      html += skActive.map(annCard).join('');
+    }
+    list.innerHTML = html;
+    wrap.style.display = 'block';
+  }
+
+  let brgyActive = [], skActive = [];
 
   rtdb.ref('announcements').on('value', snapshot => {
     try {
-      const wrap = eid('public-announcements-wrap');
-      const list = eid('public-announcements-list');
-      if (!wrap || !list) { console.warn('Announcement elements not found'); return; }
-
       const val = snapshot.val();
-      console.log('Announcements data:', val);
-      if (!val) { wrap.style.display = 'none'; return; }
+      brgyActive = val ? Object.entries(val).map(([id,a])=>({id,...a}))
+        .filter(a=>a.status==='Active')
+        .sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.createdAt||0)-(a.createdAt||0)) : [];
+      renderAll(brgyActive, skActive);
+    } catch(e) { console.warn('Brgy announcements error:', e); }
+  });
 
-      const active = Object.entries(val)
-        .map(([id, a]) => ({ id, ...a }))
-        .filter(a => a.status === 'Active')
-        .sort((a,b) => (b.pinned?1:0) - (a.pinned?1:0) || (b.createdAt||0) - (a.createdAt||0));
-
-      if (!active.length) { wrap.style.display = 'none'; return; }
-
-      list.innerHTML = active.map(a => `
-        <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap">
-            ${a.pinned ? '<span class="badge badge-yellow" style="font-size:.68rem">Pinned</span>' : ''}
-            ${a.category ? `<span class="badge ${catColor[a.category]||'badge-gray'}" style="font-size:.68rem">${a.category}</span>` : ''}
-            <span style="font-size:.72rem;color:var(--text3)">${a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : ''}</span>
-          </div>
-          <div style="font-weight:700;font-size:.95rem;margin-bottom:5px">${a.title}</div>
-          <div style="font-size:.83rem;color:var(--text2);line-height:1.65;white-space:pre-wrap">${a.body}</div>
-        </div>`).join('');
-
-      wrap.style.display = 'block';
-    } catch(e) { console.warn('Announcements error:', e); }
-  }, error => { console.warn('Announcements listener error:', error); });
+  rtdb.ref('skAnnouncements').on('value', snapshot => {
+    try {
+      const val = snapshot.val();
+      skActive = val ? Object.entries(val).map(([id,a])=>({id,...a}))
+        .filter(a=>a.status==='Active')
+        .sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||(b.createdAt||0)-(a.createdAt||0)) : [];
+      renderAll(brgyActive, skActive);
+    } catch(e) { console.warn('SK announcements error:', e); }
+  });
 }
 
 // ════════════════════════════════════════════════
@@ -4237,6 +4889,216 @@ async function exportSummaryReport() {
       ['Health','Hospital Referrals', [...healthRecs,...walkins].filter(h=>h.hospitalized==='Yes').length, now],
     ]
   );
+}
+
+// ════════════════════════════════════════════════
+// PUBLIC REQUEST STATUS CHECKER
+// ════════════════════════════════════════════════
+async function checkRequestStatus() {
+  const name = (eid('chk-name')?.value||'').trim();
+  const bday = (eid('chk-bday')?.value||'').trim();
+  const result = eid('chk-result');
+  if (!name || !bday) {
+    result.innerHTML = `<div class="alert alert-error">Please enter your full name and birthday.</div>`;
+    result.style.display = 'block'; return;
+  }
+  result.innerHTML = `<div style="color:var(--text2);font-size:.84rem">Searching…</div>`;
+  result.style.display = 'block';
+  try {
+    const all = await dbList('requests');
+    const matches = all.filter(r =>
+      (r.name||'').trim().toLowerCase() === name.toLowerCase() &&
+      (r.birthday||'') === bday
+    ).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    if (!matches.length) {
+      result.innerHTML = `<div class="alert alert-info">No request found for <strong>${name}</strong> with that birthday. Please check your details or submit a new request.</div>`;
+      return;
+    }
+    const statusColor = s => s==='Done'?'badge-green':s==='Rejected'?'badge-red':s==='Ready for Pickup'?'badge-green':'badge-yellow';
+    const statusMsg = s => ({
+      'Pending': 'Your request has been received and is waiting to be processed.',
+      'Processing': 'Your request is currently being processed by the barangay secretary.',
+      'Ready for Pickup': 'Your document is ready! Please visit the barangay hall to claim it.',
+      'Done': 'Your request has been completed.',
+      'Rejected': 'Your request was not approved. Please visit the barangay hall for more information.'
+    }[s] || 'Status updated.');
+    result.innerHTML = `
+      <div style="font-weight:600;font-size:.85rem;margin-bottom:10px;color:var(--text2)">Found ${matches.length} request(s) for ${name}:</div>
+      ${matches.map(r=>`
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px 15px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+            <strong style="font-size:.9rem">${r.reqType||'—'}</strong>
+            <span class="badge ${statusColor(r.status)}">${r.status||'Pending'}</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--text2);margin-bottom:4px">${statusMsg(r.status)}</div>
+          ${r.remarks ? `<div style="font-size:.78rem;color:var(--text3);margin-top:4px;font-style:italic">Note: ${r.remarks}</div>` : ''}
+          <div style="font-size:.74rem;color:var(--text3);margin-top:5px">Submitted: ${r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'}) : '—'}</div>
+        </div>`).join('')}`;
+  } catch(e) {
+    result.innerHTML = `<div class="alert alert-error">Could not retrieve status. Please try again.</div>`;
+  }
+}
+
+// ════════════════════════════════════════════════
+// MASTER LISTS (Secretary)
+// ════════════════════════════════════════════════
+async function masterLists() {
+  eid('main-content').innerHTML = `<div class="page-title" style="margin-bottom:6px">Master Lists</div><div class="page-sub" style="margin-bottom:18px">Printable & exportable lists for DSWD, DOH, and barangay programs</div><div style="color:var(--text2);font-size:.85rem">Loading data…</div>`;
+
+  const [resList, hhProfiles, nutritionRecs] = await Promise.all([
+    dbList('residents'), dbList('householdProfiles'), dbList('nutritionRecords')
+  ]);
+
+  const hhMap = {}; hhProfiles.forEach(p => { hhMap[p.householdId] = p; });
+  const nutrMap = {};
+  nutritionRecs.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+    .forEach(n => { if (!nutrMap[n.residentId]) nutrMap[n.residentId] = n; });
+
+  const is4ps    = hhProfiles.filter(p=>p.is4ps==='Yes').map(p=>p.householdId);
+  const isIndig  = hhProfiles.filter(p=>p.classification==='Indigent'||p.classification==='Poor').map(p=>p.householdId);
+
+  const lists = {
+    '4Ps / NHTS Beneficiaries': {
+      color:'badge-green', desc:'Households enrolled in the 4Ps program',
+      residents: resList.filter(r=>is4ps.includes(r.householdId||''))
+    },
+    'Indigent / Poor Households': {
+      color:'badge-red', desc:'Residents from indigent or poor classified households',
+      residents: resList.filter(r=>isIndig.includes(r.householdId||''))
+    },
+    'Feeding Program (SAM)': {
+      color:'badge-red', desc:'Severe Acute Malnutrition — requires immediate intervention',
+      residents: resList.filter(r=>nutrMap[r.id]?.status==='SAM')
+    },
+    'Feeding Program (MAM)': {
+      color:'badge-yellow', desc:'Moderate Acute Malnutrition — enrolled in feeding program',
+      residents: resList.filter(r=>nutrMap[r.id]?.status==='MAM')
+    },
+    'At Risk / Underweight': {
+      color:'badge-yellow', desc:'Residents flagged as underweight or at risk of malnutrition',
+      residents: resList.filter(r=>nutrMap[r.id]?.status==='At Risk')
+    },
+    'Senior Citizens (60+)': {
+      color:'badge-blue', desc:'Residents aged 60 years and above',
+      residents: resList.filter(r=>calcAge(r.birthdate)>=60)
+    },
+    'Youth (15–30 yrs)': {
+      color:'badge-blue', desc:'Residents aged 15 to 30 years old',
+      residents: resList.filter(r=>{ const a=calcAge(r.birthdate); return a>=15&&a<=30; })
+    },
+    'Children Under 5': {
+      color:'badge-yellow', desc:'Children aged 0 to 5 years old',
+      residents: resList.filter(r=>calcAge(r.birthdate)<=5)
+    },
+    'Female Residents': {
+      color:'badge-blue', desc:'All female residents',
+      residents: resList.filter(r=>r.gender==='Female')
+    },
+    'Male Residents': {
+      color:'badge-blue', desc:'All male residents',
+      residents: resList.filter(r=>r.gender==='Male')
+    },
+  };
+
+  eid('main-content').innerHTML = `
+    <div class="page-header-row" style="margin-bottom:18px">
+      <div>
+        <div class="page-title">Master Lists</div>
+        <div class="page-sub">Printable & exportable lists for DSWD, DOH, and barangay programs</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:13px">
+      ${Object.entries(lists).map(([name, list])=>`
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div>
+              <div style="font-weight:700;font-size:.92rem;margin-bottom:3px">${name}</div>
+              <div style="font-size:.75rem;color:var(--text3)">${list.desc}</div>
+            </div>
+            <span class="badge ${list.color}" style="flex-shrink:0;margin-left:8px">${list.residents.length}</span>
+          </div>
+          <div style="font-size:.8rem;color:var(--text2);margin-bottom:12px">
+            ${list.residents.length ? list.residents.slice(0,3).map(r=>`<div style="padding:2px 0">${r.lastName}, ${r.firstName}</div>`).join('') + (list.residents.length>3?`<div style="color:var(--text3)">+${list.residents.length-3} more</div>`:'') : '<span style="color:var(--text3)">No records</span>'}
+          </div>
+          <div style="display:flex;gap:7px">
+            <button class="btn btn-ghost btn-sm" style="flex:1" onclick="printMasterList('${encodeURIComponent(name)}')" ${!list.residents.length?'disabled':''}>Print</button>
+            <button class="btn btn-primary btn-sm" style="flex:1" onclick="exportMasterList('${encodeURIComponent(name)}')" ${!list.residents.length?'disabled':''}>Export CSV</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  // Store lists for print/export
+  window._masterLists = lists;
+}
+
+async function printMasterList(encodedName) {
+  const name = decodeURIComponent(encodedName);
+  const list = window._masterLists?.[name];
+  if (!list || !list.residents.length) return;
+  const today = new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
+  const rows = list.residents.sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
+  const printHtml = `
+    <div style="font-family:'Times New Roman',serif;color:#000;padding:20px">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:11pt">Republic of the Philippines</div>
+        <div style="font-size:10pt">Province of ${BRGY.province} — Municipality of ${BRGY.municipality}</div>
+        <div style="font-size:14pt;font-weight:bold;margin-top:4px">${BRGY.name.toUpperCase()}</div>
+        <div style="font-size:11pt;font-weight:bold;margin-top:8px;text-decoration:underline">${name.toUpperCase()}</div>
+        <div style="font-size:9pt;margin-top:4px">As of ${today} — Total: ${rows.length} record(s)</div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:9.5pt">
+        <thead>
+          <tr style="background:#eee">
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">#</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Full Name</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Age</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Sex</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Civil Status</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Household</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Address</th>
+            <th style="border:1px solid #999;padding:5px 7px;text-align:left">Contact</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((r,i)=>`<tr style="background:${i%2===0?'#fff':'#f9f9f9'}">
+            <td style="border:1px solid #ccc;padding:4px 7px">${i+1}</td>
+            <td style="border:1px solid #ccc;padding:4px 7px"><strong>${r.lastName}, ${r.firstName} ${r.middleName||''}</strong></td>
+            <td style="border:1px solid #ccc;padding:4px 7px">${calcAge(r.birthdate)}</td>
+            <td style="border:1px solid #ccc;padding:4px 7px">${r.gender||'—'}</td>
+            <td style="border:1px solid #ccc;padding:4px 7px">${r.civilStatus||'—'}</td>
+            <td style="border:1px solid #ccc;padding:4px 7px">${r.householdId||'—'}</td>
+            <td style="border:1px solid #ccc;padding:4px 7px">${r.address||'—'}</td>
+            <td style="border:1px solid #ccc;padding:4px 7px">${r.contact||'—'}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+      <div style="margin-top:32px;display:flex;justify-content:space-between">
+        <div style="text-align:center">
+          <div style="margin-bottom:40px;font-size:9pt">Prepared by:</div>
+          <div style="border-top:1px solid #000;padding-top:4px;font-size:9pt">${BRGY.secretary||'Barangay Secretary'}</div>
+          <div style="font-size:8.5pt">Barangay Secretary</div>
+        </div>
+        <div style="text-align:center">
+          <div style="margin-bottom:40px;font-size:9pt">Certified correct:</div>
+          <div style="border-top:1px solid #000;padding-top:4px;font-size:9pt;font-weight:bold">${BRGY.captain||'Barangay Captain'}</div>
+          <div style="font-size:8.5pt">Punong Barangay</div>
+        </div>
+      </div>
+    </div>`;
+  const pa = eid('print-area');
+  if (pa) { pa.innerHTML = printHtml; window.print(); }
+}
+
+function exportMasterList(encodedName) {
+  const name = decodeURIComponent(encodedName);
+  const list = window._masterLists?.[name];
+  if (!list || !list.residents.length) return;
+  const rows = list.residents.sort((a,b)=>(a.lastName||'').localeCompare(b.lastName||''));
+  exportCSV(name.replace(/[^a-z0-9]/gi,'_').toLowerCase()+'.csv',
+    ['#','Last Name','First Name','Middle Name','Birthdate','Age','Gender','Civil Status','Religion','Household ID','Address','Contact','Email'],
+    rows.map((r,i)=>[i+1, r.lastName, r.firstName, r.middleName||'', r.birthdate||'', calcAge(r.birthdate), r.gender||'', r.civilStatus||'', r.religion||'', r.householdId||'', r.address||'', r.contact||'', r.email||''])
+  );
+  auditWrite('Export Master List', name);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
